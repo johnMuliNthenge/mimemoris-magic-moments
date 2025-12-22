@@ -7,13 +7,15 @@ import {
   CreditCard, 
   TrendingUp,
   DollarSign,
-  Activity
+  Activity,
+  Settings
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminPlans } from '@/components/admin/AdminPlans';
+import { AdminStripeSetup } from '@/components/admin/AdminStripeSetup';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardStats {
@@ -160,7 +162,7 @@ export default function AdminDashboard() {
           transition={{ delay: 0.4 }}
         >
           <Tabs defaultValue="users" className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsList className="grid w-full max-w-lg grid-cols-3">
               <TabsTrigger value="users" className="gap-2">
                 <Users className="w-4 h-4" />
                 {t('manage_users')}
@@ -168,6 +170,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="plans" className="gap-2">
                 <CreditCard className="w-4 h-4" />
                 {t('manage_plans')}
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="gap-2">
+                <Settings className="w-4 h-4" />
+                Payments
               </TabsTrigger>
             </TabsList>
 
@@ -177,6 +183,10 @@ export default function AdminDashboard() {
 
             <TabsContent value="plans">
               <AdminPlans />
+            </TabsContent>
+
+            <TabsContent value="payments">
+              <AdminStripeSetup />
             </TabsContent>
           </Tabs>
         </motion.div>
