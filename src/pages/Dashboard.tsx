@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -16,6 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
+import { MemoryQuery } from '@/components/memory/MemoryQuery';
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -145,6 +145,15 @@ export default function Dashboard() {
             </Card>
           </motion.div>
         )}
+
+        {/* Memory Query */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+        >
+          <MemoryQuery onMemoryFound={(memory) => navigate(`/memories/${memory.id}/edit`)} />
+        </motion.div>
 
         {/* Recent Memories */}
         <div className="grid lg:grid-cols-2 gap-6">
