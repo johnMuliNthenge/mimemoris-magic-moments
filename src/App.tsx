@@ -10,7 +10,6 @@ import "@fontsource/nunito/600.css";
 import "@fontsource/nunito/700.css";
 import "@fontsource/poppins/600.css";
 import "@fontsource/poppins/700.css";
-import "@/lib/i18n";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
