@@ -14,16 +14,317 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      collaboration_memories: {
+        Row: {
+          collaboration_id: string
+          content: string | null
+          created_at: string
+          creator_user_id: string
+          id: string
+          media_url: string | null
+          memory_type: Database["public"]["Enums"]["memory_type"]
+        }
+        Insert: {
+          collaboration_id: string
+          content?: string | null
+          created_at?: string
+          creator_user_id: string
+          id?: string
+          media_url?: string | null
+          memory_type: Database["public"]["Enums"]["memory_type"]
+        }
+        Update: {
+          collaboration_id?: string
+          content?: string | null
+          created_at?: string
+          creator_user_id?: string
+          id?: string
+          media_url?: string | null
+          memory_type?: Database["public"]["Enums"]["memory_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaboration_memories_collaboration_id_fkey"
+            columns: ["collaboration_id"]
+            isOneToOne: false
+            referencedRelation: "collaboration_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaboration_participants: {
+        Row: {
+          collaboration_id: string
+          id: string
+          joined_at: string
+          left_at: string | null
+          user_id: string
+        }
+        Insert: {
+          collaboration_id: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          user_id: string
+        }
+        Update: {
+          collaboration_id?: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaboration_participants_collaboration_id_fkey"
+            columns: ["collaboration_id"]
+            isOneToOne: false
+            referencedRelation: "collaboration_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaboration_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          host_user_id: string
+          id: string
+          is_active: boolean | null
+          otp_code: string
+          otp_expires_at: string
+          session_date: string | null
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          host_user_id: string
+          id?: string
+          is_active?: boolean | null
+          otp_code: string
+          otp_expires_at: string
+          session_date?: string | null
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          host_user_id?: string
+          id?: string
+          is_active?: boolean | null
+          otp_code?: string
+          otp_expires_at?: string
+          session_date?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      memories: {
+        Row: {
+          ai_analysis: Json | null
+          collaboration_id: string | null
+          content: string | null
+          created_at: string
+          id: string
+          is_from_collaboration: boolean | null
+          language: string | null
+          media_url: string | null
+          memory_date: string
+          memory_type: Database["public"]["Enums"]["memory_type"]
+          mood: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          collaboration_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_from_collaboration?: boolean | null
+          language?: string | null
+          media_url?: string | null
+          memory_date: string
+          memory_type: Database["public"]["Enums"]["memory_type"]
+          mood?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          collaboration_id?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_from_collaboration?: boolean | null
+          language?: string | null
+          media_url?: string | null
+          memory_date?: string
+          memory_type?: Database["public"]["Enums"]["memory_type"]
+          mood?: string | null
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          preferred_language: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          preferred_language?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          preferred_language?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          languages_limited: boolean | null
+          memory_limit: number
+          name: string
+          price_monthly: number
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          languages_limited?: boolean | null
+          memory_limit: number
+          name: string
+          price_monthly: number
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          languages_limited?: boolean | null
+          memory_limit?: number
+          name?: string
+          price_monthly?: number
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          memories_used_this_month: number | null
+          plan_id: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          memories_used_this_month?: number | null
+          plan_id: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          memories_used_this_month?: number | null
+          plan_id?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      memory_type: "text" | "audio" | "video" | "photo"
+      subscription_tier: "basic" | "standard" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +451,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      memory_type: ["text", "audio", "video", "photo"],
+      subscription_tier: ["basic", "standard", "premium"],
+    },
   },
 } as const
