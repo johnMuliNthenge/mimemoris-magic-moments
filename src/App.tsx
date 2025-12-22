@@ -16,6 +16,8 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Memories from "./pages/Memories";
+import MemoriesList from "./pages/MemoriesList";
+import CollaborationsList from "./pages/CollaborationsList";
 import CreateMemory from "./pages/CreateMemory";
 import Collaborate from "./pages/Collaborate";
 import Subscription from "./pages/Subscription";
@@ -36,8 +38,10 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/memories" element={<ProtectedRoute><Memories /></ProtectedRoute>} />
+            <Route path="/memories/list" element={<ProtectedRoute><MemoriesList /></ProtectedRoute>} />
             <Route path="/memories/new" element={<ProtectedRoute><CreateMemory /></ProtectedRoute>} />
             <Route path="/collaborate" element={<ProtectedRoute><Collaborate /></ProtectedRoute>} />
+            <Route path="/collaborations" element={<ProtectedRoute><CollaborationsList /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
