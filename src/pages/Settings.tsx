@@ -1,0 +1,217 @@
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
+import { User, Globe, Moon, Sun, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+const languages = [
+  { code: 'en', name: 'English' },
+  { code: 'fr', name: 'Français' },
+  { code: 'es', name: 'Español' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'sw', name: 'Kiswahili' },
+];
+
+export default function SettingsPage() {
+  const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const [fullName, setFullName] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState(i18n.language);
+  const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
+  const [loading, setLoading] = useState(false);
+
+  const handleLanguageChange = (lang: string) => {
+    setSelectedLanguage(lang);
+    i18n.changeLanguage(lang);
+    localStorage.setItem('i18nextLng', lang);
+    
+    // Update profile language preference
+    if (user) {
+      supabase
+        .from('profiles')
+        .update({ preferred_language: lang })
+        .eq('user_id', user.id);
+    }
+  };
+
+  const toggleTheme = () => {
+    setIsDark(!isDark);
+    document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  };
+
+  const updateProfile = async () => {
+    if (!user || !fullName.trim()) return;
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Profile Updated',
+        description: 'Your profile has been updated successfully.',
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AppLayout>
+      <div className="max-w-2xl mx-auto space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h1 className="font-display text-3xl font-bold mb-2">{t('nav_settings')}</h1>
+          <p className="text-muted-foreground">
+            Manage your account and preferences
+          </p>
+        </motion.div>
+
+        {/* Profile Settings */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="border-border shadow-soft">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5 text-primary" />
+                {t('profile_settings')}
+              </CardTitle>
+              <CardDescription>
+                Update your personal information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">{t('email')}</Label>
+                <Input
+                  id="email"
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fullName">{t('full_name')}</Label>
+                <Input
+                  id="fullName"
+                  placeholder="Enter your name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+              <Button
+                onClick={updateProfile}
+                disabled={loading || !fullName.trim()}
+                className="gradient-warm text-primary-foreground"
+              >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t('save')}
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Language Settings */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-border shadow-soft">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-accent" />
+                {t('language_settings')}
+              </CardTitle>
+              <CardDescription>
+                Choose your preferred language
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {languages.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Theme Settings */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="border-border shadow-soft">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {isDark ? <Moon className="w-5 h-5 text-collab" /> : <Sun className="w-5 h-5 text-warning" />}
+                {t('theme_settings')}
+              </CardTitle>
+              <CardDescription>
+                Switch between light and dark mode
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sun className="w-5 h-5 text-warning" />
+                  <span className="text-sm">{t('light_mode')}</span>
+                </div>
+                <Switch
+                  checked={isDark}
+                  onCheckedChange={toggleTheme}
+                />
+                <div className="flex items-center gap-3">
+                  <span className="text-sm">{t('dark_mode')}</span>
+                  <Moon className="w-5 h-5 text-collab" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </AppLayout>
+  );
+}
