@@ -29,7 +29,7 @@ Provide a JSON response with:
 
 Respond ONLY with valid JSON, no markdown.`;
 
-    const response = await fetch('https://llm.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
