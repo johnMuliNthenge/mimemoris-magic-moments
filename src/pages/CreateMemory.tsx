@@ -12,7 +12,8 @@ import {
   Upload,
   Loader2,
   X,
-  Smile
+  Smile,
+  Circle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { MediaRecorder } from '@/components/memory/MediaRecorder';
+import { MoodAnalysis } from '@/components/memory/MoodAnalysis';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +55,8 @@ export default function CreateMemory() {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [showRecorder, setShowRecorder] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,6 +65,12 @@ export default function CreateMemory() {
       const url = URL.createObjectURL(file);
       setMediaPreview(url);
     }
+  };
+
+  const handleRecordingComplete = (blob: Blob, url: string) => {
+    setMediaFile(new File([blob], `recording.webm`, { type: blob.type }));
+    setMediaPreview(url);
+    setShowRecorder(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,6 +118,7 @@ export default function CreateMemory() {
         content: content || null,
         media_url: mediaUrl,
         mood: selectedMood,
+        ai_analysis: aiAnalysis,
       });
 
       if (error) throw error;
@@ -230,7 +242,7 @@ export default function CreateMemory() {
 
             {/* Media Upload - for audio, video, photo */}
             {selectedType !== 'text' && (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <Label>{t('upload_media')}</Label>
                 <input
                   ref={fileInputRef}
@@ -244,7 +256,13 @@ export default function CreateMemory() {
                   onChange={handleFileSelect}
                 />
                 
-                {mediaPreview ? (
+                {showRecorder && (selectedType === 'audio' || selectedType === 'video') ? (
+                  <MediaRecorder
+                    type={selectedType}
+                    onRecordingComplete={handleRecordingComplete}
+                    onCancel={() => setShowRecorder(false)}
+                  />
+                ) : mediaPreview ? (
                   <Card className="relative overflow-hidden">
                     <CardContent className="p-0">
                       {selectedType === 'photo' && (
@@ -273,14 +291,31 @@ export default function CreateMemory() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-48 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-4 hover:border-primary/50 transition-colors"
-                  >
-                    <Upload className="w-10 h-10 text-muted-foreground" />
-                    <span className="text-muted-foreground">Click to upload or drag and drop</span>
-                  </button>
+                  <div className="space-y-3">
+                    {/* Recording option for audio/video */}
+                    {(selectedType === 'audio' || selectedType === 'video') && (
+                      <button
+                        type="button"
+                        onClick={() => setShowRecorder(true)}
+                        className="w-full h-24 border-2 border-dashed border-primary/50 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                      >
+                        <Circle className="w-8 h-8 text-primary" />
+                        <span className="text-primary font-medium">
+                          Record {selectedType === 'audio' ? 'Audio' : 'Video'}
+                        </span>
+                      </button>
+                    )}
+                    
+                    {/* Upload option */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-32 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-4 hover:border-primary/50 transition-colors"
+                    >
+                      <Upload className="w-10 h-10 text-muted-foreground" />
+                      <span className="text-muted-foreground">Click to upload or drag and drop</span>
+                    </button>
+                  </div>
                 )}
 
                 {/* Description for media */}
@@ -321,6 +356,16 @@ export default function CreateMemory() {
                 ))}
               </div>
             </div>
+
+            {/* AI Mood Analysis */}
+            {(content || selectedMood) && (
+              <MoodAnalysis
+                content={content}
+                memoryType={selectedType}
+                mood={selectedMood}
+                onAnalysisComplete={setAiAnalysis}
+              />
+            )}
 
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">
