@@ -34,18 +34,48 @@ export default function SubscriptionPage() {
     if (!user) return;
 
     try {
+      const selectedPlan = plans.find(p => p.id === planId);
+      const currentPlan = subscription?.plan;
+      
       if (subscription) {
         // Update existing subscription
         await supabase
           .from('user_subscriptions')
           .update({ plan_id: planId })
           .eq('id', subscription.id);
+
+        // Determine if upgrade or downgrade
+        const planTiers = { basic: 1, standard: 2, premium: 3 };
+        const currentTier = currentPlan?.tier ? planTiers[currentPlan.tier as keyof typeof planTiers] : 0;
+        const newTier = selectedPlan?.tier ? planTiers[selectedPlan.tier as keyof typeof planTiers] : 0;
+        const type = newTier > currentTier ? 'upgrade' : 'downgrade';
+
+        // Send notification
+        await supabase.functions.invoke('subscription-notification', {
+          body: {
+            userId: user.id,
+            userEmail: user.email,
+            newPlanName: selectedPlan?.name || 'Unknown',
+            previousPlanName: currentPlan?.name,
+            type
+          }
+        });
       } else {
         // Create new subscription
         await supabase.from('user_subscriptions').insert({
           user_id: user.id,
           plan_id: planId,
           current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+
+        // Send welcome notification
+        await supabase.functions.invoke('subscription-notification', {
+          body: {
+            userId: user.id,
+            userEmail: user.email,
+            newPlanName: selectedPlan?.name || 'Unknown',
+            type: 'new'
+          }
         });
       }
 

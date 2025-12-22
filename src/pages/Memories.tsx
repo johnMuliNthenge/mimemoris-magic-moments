@@ -1,40 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  Search, 
-  Filter,
-  Calendar,
-  FileText,
-  Mic,
-  Video,
-  Image,
-  MoreVertical,
-  Trash2,
-  Edit
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Plus, Search, Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { MemoriesTimeline } from '@/components/memory/MemoriesTimeline';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
 
 interface Memory {
   id: string;
@@ -47,20 +21,6 @@ interface Memory {
   created_at: string;
 }
 
-const typeIcons = {
-  text: FileText,
-  audio: Mic,
-  video: Video,
-  photo: Image,
-};
-
-const typeColors = {
-  text: 'bg-primary/10 text-primary',
-  audio: 'bg-accent/10 text-accent',
-  video: 'bg-collab/10 text-collab',
-  photo: 'bg-success/10 text-success',
-};
-
 export default function MemoriesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -68,7 +28,6 @@ export default function MemoriesPage() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
 
   useEffect(() => {
     if (user) {
@@ -95,11 +54,15 @@ export default function MemoriesPage() {
   };
 
   const filteredMemories = memories.filter(memory => {
-    const matchesSearch = memory.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = !searchQuery || 
+      memory.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       memory.content?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || memory.memory_type === filterType;
-    return matchesSearch && matchesType;
+    return matchesSearch;
   });
+
+  const handleMemoryClick = (memory: Memory) => {
+    navigate(`/memories/${memory.id}/edit`);
+  };
 
   return (
     <AppLayout>
@@ -121,46 +84,23 @@ export default function MemoriesPage() {
           </Button>
         </div>
 
-        {/* Search & Filter */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder={t('search_memories')}
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-full sm:w-48">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="text">{t('memory_type_text')}</SelectItem>
-              <SelectItem value="audio">{t('memory_type_audio')}</SelectItem>
-              <SelectItem value="video">{t('memory_type_video')}</SelectItem>
-              <SelectItem value="photo">{t('memory_type_photo')}</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder={t('search_memories')}
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        {/* Memories Grid */}
+        {/* Content */}
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-4 bg-muted rounded w-3/4 mb-4" />
-                  <div className="h-3 bg-muted rounded w-1/2 mb-2" />
-                  <div className="h-3 bg-muted rounded w-full" />
-                </CardContent>
-              </Card>
-            ))}
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : filteredMemories.length === 0 ? (
+        ) : memories.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -177,79 +117,11 @@ export default function MemoriesPage() {
             </Button>
           </motion.div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence>
-              {filteredMemories.map((memory, index) => {
-                const Icon = typeIcons[memory.memory_type];
-                return (
-                  <motion.div
-                    key={memory.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Card className="group hover:shadow-lg transition-all cursor-pointer border-border">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className={`p-2 rounded-lg ${typeColors[memory.memory_type]}`}>
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => navigate(`/memories/${memory.id}/edit`)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                {t('edit')}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="text-destructive"
-                                onClick={() => deleteMemory(memory.id)}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                {t('delete')}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-
-                        {memory.media_url && memory.memory_type === 'photo' && (
-                          <div className="mb-4 -mx-2 -mt-2 rounded-lg overflow-hidden">
-                            <img 
-                              src={memory.media_url} 
-                              alt={memory.title || 'Memory'} 
-                              className="w-full h-32 object-cover"
-                            />
-                          </div>
-                        )}
-
-                        <h3 className="font-semibold text-lg mb-1 line-clamp-1">
-                          {memory.title || 'Untitled Memory'}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {format(new Date(memory.memory_date), 'MMMM d, yyyy')}
-                        </p>
-                        {memory.content && (
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {memory.content}
-                          </p>
-                        )}
-                        {memory.mood && (
-                          <div className="mt-4 flex items-center gap-2">
-                            <span className="text-2xl">{memory.mood}</span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
+          <MemoriesTimeline 
+            memories={filteredMemories}
+            onMemoryClick={handleMemoryClick}
+            onDeleteMemory={deleteMemory}
+          />
         )}
       </div>
     </AppLayout>
