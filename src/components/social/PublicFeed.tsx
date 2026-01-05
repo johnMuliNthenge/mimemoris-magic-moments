@@ -1,0 +1,261 @@
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
+import { format, parseISO } from 'date-fns';
+import { 
+  Heart, 
+  MessageCircle, 
+  Share2, 
+  Play,
+  Loader2,
+  Globe,
+  Send
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { usePublicFeed } from '@/hooks/usePublicFeed';
+import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
+
+export function PublicFeed() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { memories, loading, toggleLike, getComments, addComment } = usePublicFeed();
+  
+  const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  const openComments = async (memoryId: string) => {
+    setSelectedMemory(memoryId);
+    setLoadingComments(true);
+    const fetchedComments = await getComments(memoryId);
+    setComments(fetchedComments);
+    setLoadingComments(false);
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !selectedMemory) return;
+    setSubmittingComment(true);
+    
+    await addComment(selectedMemory, newComment.trim());
+    const updatedComments = await getComments(selectedMemory);
+    setComments(updatedComments);
+    setNewComment('');
+    setSubmittingComment(false);
+  };
+
+  const handleLike = async (memoryId: string) => {
+    if (!user) return;
+    await toggleLike(memoryId);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {[1, 2, 3].map(i => (
+          <Card key={i} className="border-border">
+            <CardHeader className="flex flex-row items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full rounded-lg" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (memories.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Globe className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+        <h3 className="text-xl font-semibold mb-2">No Public Memories</h3>
+        <p className="text-muted-foreground">
+          Be the first to share a memory with the community!
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-6">
+        {memories.map((memory, index) => (
+          <motion.div
+            key={memory.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <Card className="border-border overflow-hidden">
+              <CardHeader className="flex flex-row items-center gap-3 pb-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={memory.user_profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {memory.user_profile?.full_name?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="font-medium">{memory.user_profile?.full_name || 'Anonymous'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                {memory.mood && (
+                  <span className="text-2xl">{memory.mood}</span>
+                )}
+              </CardHeader>
+              
+              <CardContent className="pb-3">
+                {memory.title && (
+                  <h4 className="font-semibold mb-2">{memory.title}</h4>
+                )}
+                
+                {memory.content && (
+                  <p className="text-muted-foreground mb-3">{memory.content}</p>
+                )}
+
+                {memory.media_url && (
+                  <div className="rounded-lg overflow-hidden">
+                    {memory.memory_type === 'photo' && (
+                      <img 
+                        src={memory.media_url} 
+                        alt={memory.title || 'Memory'} 
+                        className="w-full max-h-96 object-cover"
+                      />
+                    )}
+                    {memory.memory_type === 'video' && (
+                      <video 
+                        src={memory.media_url} 
+                        controls 
+                        className="w-full max-h-96"
+                      />
+                    )}
+                    {memory.memory_type === 'audio' && (
+                      <audio src={memory.media_url} controls className="w-full" />
+                    )}
+                  </div>
+                )}
+              </CardContent>
+
+              <CardFooter className="border-t border-border pt-3">
+                <div className="flex items-center gap-4 w-full">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className={cn(
+                      "gap-2",
+                      memory.is_liked && "text-destructive"
+                    )}
+                    onClick={() => handleLike(memory.id)}
+                    disabled={!user}
+                  >
+                    <Heart className={cn("w-5 h-5", memory.is_liked && "fill-current")} />
+                    {memory.likes_count}
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-2"
+                    onClick={() => openComments(memory.id)}
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    {memory.comments_count}
+                  </Button>
+                  
+                  <Button variant="ghost" size="sm" className="gap-2 ml-auto">
+                    <Share2 className="w-5 h-5" />
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Comments Dialog */}
+      <Dialog open={!!selectedMemory} onOpenChange={() => setSelectedMemory(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Comments</DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            {loadingComments ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No comments yet</p>
+                <p className="text-sm">Be the first to comment!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="flex gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={comment.user_profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {comment.user_profile?.full_name?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 bg-muted rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm">
+                          {comment.user_profile?.full_name || 'Anonymous'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(comment.created_at), 'MMM d, HH:mm')}
+                        </span>
+                      </div>
+                      <p className="text-sm">{comment.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+
+          {user && (
+            <div className="flex gap-2 pt-4 border-t border-border">
+              <Input
+                placeholder="Write a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                disabled={submittingComment}
+              />
+              <Button onClick={handleAddComment} disabled={submittingComment || !newComment.trim()}>
+                {submittingComment ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

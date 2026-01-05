@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       collaboration_memories: {
         Row: {
           collaboration_id: string
@@ -128,6 +155,7 @@ export type Database = {
           created_at: string
           id: string
           is_from_collaboration: boolean | null
+          is_public: boolean | null
           language: string | null
           media_url: string | null
           memory_date: string
@@ -145,6 +173,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_from_collaboration?: boolean | null
+          is_public?: boolean | null
           language?: string | null
           media_url?: string | null
           memory_date: string
@@ -162,6 +191,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_from_collaboration?: boolean | null
+          is_public?: boolean | null
           language?: string | null
           media_url?: string | null
           memory_date?: string
@@ -173,6 +203,70 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      memory_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          memory_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          memory_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          memory_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_comments_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memory_likes: {
+        Row: {
+          created_at: string
+          id: string
+          memory_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memory_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memory_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_likes_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -207,11 +301,11 @@ export type Database = {
       subscription_plans: {
         Row: {
           created_at: string
+          daily_memory_limit: number
           features: Json | null
           id: string
           is_active: boolean | null
           languages_limited: boolean | null
-          memory_limit: number
           name: string
           price_monthly: number
           tier: Database["public"]["Enums"]["subscription_tier"]
@@ -219,11 +313,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          daily_memory_limit: number
           features?: Json | null
           id?: string
           is_active?: boolean | null
           languages_limited?: boolean | null
-          memory_limit: number
           name: string
           price_monthly: number
           tier: Database["public"]["Enums"]["subscription_tier"]
@@ -231,14 +325,41 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          daily_memory_limit?: number
           features?: Json | null
           id?: string
           is_active?: boolean | null
           languages_limited?: boolean | null
-          memory_limit?: number
           name?: string
           price_monthly?: number
           tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -270,7 +391,8 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           id: string
-          memories_used_this_month: number | null
+          last_memory_date: string | null
+          memories_used_today: number | null
           plan_id: string
           status: string | null
           updated_at: string
@@ -281,7 +403,8 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          memories_used_this_month?: number | null
+          last_memory_date?: string | null
+          memories_used_today?: number | null
           plan_id: string
           status?: string | null
           updated_at?: string
@@ -292,7 +415,8 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          memories_used_this_month?: number | null
+          last_memory_date?: string | null
+          memories_used_today?: number | null
           plan_id?: string
           status?: string | null
           updated_at?: string

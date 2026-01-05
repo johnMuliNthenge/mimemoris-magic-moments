@@ -13,7 +13,8 @@ import {
   X,
   LogOut,
   Sun,
-  Moon
+  Moon,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { path: '/dashboard', icon: Home, label: t('nav_home') },
     { path: '/memories', icon: BookHeart, label: t('nav_memories') },
     { path: '/collaborate', icon: Users, label: t('nav_collaborate') },
+    { path: '/social', icon: Globe, label: 'Social' },
     { path: '/subscription', icon: CreditCard, label: t('nav_subscription') },
     { path: '/settings', icon: Settings, label: t('nav_settings') },
   ];

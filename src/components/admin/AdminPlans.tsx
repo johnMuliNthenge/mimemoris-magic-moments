@@ -34,7 +34,7 @@ interface SubscriptionPlan {
   tier: 'basic' | 'standard' | 'premium';
   name: string;
   price_monthly: number;
-  memory_limit: number;
+  daily_memory_limit: number;
   languages_limited: boolean;
   features: string[];
   is_active: boolean;
@@ -105,7 +105,7 @@ export function AdminPlans() {
         .update({
           name: editingPlan.name,
           price_monthly: editingPlan.price_monthly,
-          memory_limit: editingPlan.memory_limit,
+          daily_memory_limit: editingPlan.daily_memory_limit,
           languages_limited: editingPlan.languages_limited,
           features: editingPlan.features,
           is_active: editingPlan.is_active,
@@ -234,8 +234,8 @@ export function AdminPlans() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <span className="text-sm">Memory Limit</span>
-                        <span className="font-bold">{plan.memory_limit}</span>
+                        <span className="text-sm">Daily Memories</span>
+                        <span className="font-bold">{plan.daily_memory_limit}/day</span>
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                         <span className="text-sm flex items-center gap-2">
@@ -303,14 +303,14 @@ export function AdminPlans() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="limit">Memory Limit</Label>
+                  <Label htmlFor="limit">Daily Memory Limit</Label>
                   <Input
                     id="limit"
                     type="number"
-                    value={editingPlan.memory_limit}
+                    value={editingPlan.daily_memory_limit}
                     onChange={(e) => setEditingPlan({ 
                       ...editingPlan, 
-                      memory_limit: parseInt(e.target.value) 
+                      daily_memory_limit: parseInt(e.target.value) 
                     })}
                   />
                 </div>

@@ -157,7 +157,7 @@ export default function SubscriptionPage() {
                       <span className="text-muted-foreground">{t('per_month')}</span>
                     </div>
                     <CardDescription className={cn(isPremium && "text-collab-foreground/80")}>
-                      {plan.memory_limit} memories per month
+                      {plan.daily_memory_limit} memories per day
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">

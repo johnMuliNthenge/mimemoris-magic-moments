@@ -23,6 +23,7 @@ import Collaborate from "./pages/Collaborate";
 import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import Social from "./pages/Social";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/memories/new" element={<ProtectedRoute><CreateMemory /></ProtectedRoute>} />
             <Route path="/collaborate" element={<ProtectedRoute><Collaborate /></ProtectedRoute>} />
             <Route path="/collaborations" element={<ProtectedRoute><CollaborationsList /></ProtectedRoute>} />
+            <Route path="/social" element={<ProtectedRoute><Social /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
