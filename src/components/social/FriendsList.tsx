@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -26,54 +27,95 @@ interface FriendsListProps {
   onStartChat?: (userId: string) => void;
 }
 
+const USERS_PER_PAGE = 10;
+
 export function FriendsList({ onStartChat }: FriendsListProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { friends, pendingRequests, loading, acceptRequest, rejectRequest, unfriend, sendFriendRequest } = useFriends();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Real-time search as user types
-  useEffect(() => {
-    const searchUsers = async () => {
-      if (!user) return;
-      
-      setSearching(true);
+  const searchUsers = useCallback(async (isLoadMore = false) => {
+    if (!user) return;
+    
+    setSearching(true);
+    const currentPage = isLoadMore ? page : 0;
 
-      // Get existing friend/pending user IDs to exclude
-      const existingUserIds = new Set<string>();
-      existingUserIds.add(user.id); // Exclude current user
-      friends.forEach(f => existingUserIds.add(f.user_id));
-      pendingRequests.forEach(p => existingUserIds.add(p.user_id));
+    // Get existing friend/pending user IDs to exclude
+    const existingUserIds = new Set<string>();
+    existingUserIds.add(user.id);
+    friends.forEach(f => existingUserIds.add(f.user_id));
+    pendingRequests.forEach(p => existingUserIds.add(p.user_id));
 
-      let query = supabase
-        .from('profiles')
-        .select('user_id, full_name, avatar_url')
-        .neq('user_id', user.id);
+    let query = supabase
+      .from('profiles')
+      .select('user_id, full_name, avatar_url')
+      .neq('user_id', user.id)
+      .order('full_name', { ascending: true })
+      .range(currentPage * USERS_PER_PAGE, (currentPage + 1) * USERS_PER_PAGE - 1);
 
-      // If there's a search query, filter by name
-      if (searchQuery.trim()) {
-        query = query.ilike('full_name', `%${searchQuery}%`);
-      }
+    if (searchQuery.trim()) {
+      query = query.ilike('full_name', `%${searchQuery}%`);
+    }
 
-      const { data } = await query.limit(20);
+    const { data } = await query;
 
-      // Filter out current user, friends, and pending requests
-      const filteredResults = (data || []).filter(
-        profile => !existingUserIds.has(profile.user_id)
-      );
+    const filteredResults = (data || []).filter(
+      profile => !existingUserIds.has(profile.user_id)
+    );
 
+    if (isLoadMore) {
+      setSearchResults(prev => [...prev, ...filteredResults]);
+    } else {
       setSearchResults(filteredResults);
-      setSearching(false);
-    };
+    }
 
-    // Debounce search
-    const timeoutId = setTimeout(searchUsers, 300);
+    setHasMore((data?.length || 0) === USERS_PER_PAGE);
+    if (!isLoadMore) setPage(0);
+    setSearching(false);
+  }, [user, searchQuery, friends, pendingRequests, page]);
+
+  // Initial search and search on query change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setPage(0);
+      searchUsers(false);
+    }, 300);
     return () => clearTimeout(timeoutId);
   }, [searchQuery, user, friends, pendingRequests]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect();
+
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore && !searching) {
+        setPage(prev => prev + 1);
+      }
+    });
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => observerRef.current?.disconnect();
+  }, [hasMore, searching]);
+
+  // Load more when page changes
+  useEffect(() => {
+    if (page > 0) {
+      searchUsers(true);
+    }
+  }, [page]);
 
   const handleSendRequest = async (userId: string) => {
     const { error } = await sendFriendRequest(userId);
@@ -140,22 +182,42 @@ export function FriendsList({ onStartChat }: FriendsListProps) {
           </div>
           
           {searchResults.length > 0 && (
-            <div className="space-y-2">
-              {searchResults.map(user => (
-                <div key={user.user_id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {searchResults.map(resultUser => (
+                <div 
+                  key={resultUser.user_id} 
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/profile/${resultUser.user_id}`)}
+                >
                   <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={user.avatar_url || undefined} />
-                      <AvatarFallback>{user.full_name?.[0] || 'U'}</AvatarFallback>
+                      <AvatarImage src={resultUser.avatar_url || undefined} />
+                      <AvatarFallback>{resultUser.full_name?.[0] || 'U'}</AvatarFallback>
                     </Avatar>
-                    <span className="font-medium">{user.full_name || 'Unknown User'}</span>
+                    <span className="font-medium">{resultUser.full_name || 'Unknown User'}</span>
                   </div>
-                  <Button size="sm" onClick={() => handleSendRequest(user.user_id)}>
+                  <Button 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSendRequest(resultUser.user_id);
+                    }}
+                  >
                     <UserPlus className="w-4 h-4 mr-1" />
                     Add
                   </Button>
                 </div>
               ))}
+              {/* Infinite scroll trigger */}
+              <div ref={loadMoreRef} className="h-4" />
+              {searching && page > 0 && (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {!hasMore && searchResults.length > 0 && (
+                <p className="text-center text-sm text-muted-foreground py-2">No more users</p>
+              )}
             </div>
           )}
         </CardContent>
