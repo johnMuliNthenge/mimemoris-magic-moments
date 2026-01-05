@@ -43,7 +43,7 @@ const App = () => (
             <Route path="/memories/new" element={<ProtectedRoute><CreateMemory /></ProtectedRoute>} />
             <Route path="/collaborate" element={<ProtectedRoute><Collaborate /></ProtectedRoute>} />
             <Route path="/collaborations" element={<ProtectedRoute><CollaborationsList /></ProtectedRoute>} />
-            <Route path="/social" element={<ProtectedRoute><Social /></ProtectedRoute>} />
+            <Route path="/friends" element={<ProtectedRoute><Social /></ProtectedRoute>} />
             <Route path="/profile/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

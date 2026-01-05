@@ -52,8 +52,8 @@ export default function SocialPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <h1 className="font-display text-3xl font-bold">Social</h1>
-          <p className="text-muted-foreground">Connect with friends and share memories</p>
+          <h1 className="font-display text-3xl font-bold">{t('nav_friends')}</h1>
+          <p className="text-muted-foreground">{t('friends_subtitle')}</p>
         </motion.div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>

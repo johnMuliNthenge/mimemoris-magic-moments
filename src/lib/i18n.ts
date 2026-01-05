@@ -32,11 +32,13 @@ const resources = {
       
       // Navigation
       nav_home: "Home",
+      nav_friends: "Friends",
       nav_memories: "My Memories",
       nav_collaborate: "Collaborate",
       nav_settings: "Settings",
       nav_admin: "Admin Panel",
       nav_subscription: "Subscription",
+      friends_subtitle: "Connect with friends and share memories",
       
       // Memories
       create_memory: "Create Memory",
@@ -118,11 +120,13 @@ const resources = {
       have_account: "Vous avez déjà un compte?",
       
       nav_home: "Accueil",
+      nav_friends: "Amis",
       nav_memories: "Mes souvenirs",
       nav_collaborate: "Collaborer",
       nav_settings: "Paramètres",
       nav_admin: "Panneau Admin",
       nav_subscription: "Abonnement",
+      friends_subtitle: "Connectez-vous avec des amis et partagez des souvenirs",
       
       create_memory: "Créer un souvenir",
       my_memories: "Mes souvenirs",
@@ -199,11 +203,13 @@ const resources = {
       have_account: "¿Ya tienes una cuenta?",
       
       nav_home: "Inicio",
+      nav_friends: "Amigos",
       nav_memories: "Mis recuerdos",
       nav_collaborate: "Colaborar",
       nav_settings: "Configuración",
       nav_admin: "Panel de Admin",
       nav_subscription: "Suscripción",
+      friends_subtitle: "Conéctate con amigos y comparte recuerdos",
       
       create_memory: "Crear recuerdo",
       my_memories: "Mis recuerdos",
@@ -280,11 +286,13 @@ const resources = {
       have_account: "Hai già un account?",
       
       nav_home: "Home",
+      nav_friends: "Amici",
       nav_memories: "I miei ricordi",
       nav_collaborate: "Collabora",
       nav_settings: "Impostazioni",
       nav_admin: "Pannello Admin",
       nav_subscription: "Abbonamento",
+      friends_subtitle: "Connettiti con gli amici e condividi ricordi",
       
       create_memory: "Crea ricordo",
       my_memories: "I miei ricordi",
@@ -361,11 +369,13 @@ const resources = {
       have_account: "Una akaunti tayari?",
       
       nav_home: "Nyumbani",
+      nav_friends: "Marafiki",
       nav_memories: "Kumbukumbu zangu",
       nav_collaborate: "Shirikiana",
       nav_settings: "Mipangilio",
       nav_admin: "Paneli ya Admin",
       nav_subscription: "Usajili",
+      friends_subtitle: "Wasiliana na marafiki na ushiriki kumbukumbu",
       
       create_memory: "Unda kumbukumbu",
       my_memories: "Kumbukumbu zangu",
