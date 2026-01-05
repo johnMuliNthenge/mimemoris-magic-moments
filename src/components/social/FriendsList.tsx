@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useFriends } from '@/hooks/useFriends';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,7 @@ interface FriendsListProps {
 export function FriendsList({ onStartChat }: FriendsListProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { friends, pendingRequests, loading, acceptRequest, rejectRequest, unfriend, sendFriendRequest } = useFriends();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,16 +37,27 @@ export function FriendsList({ onStartChat }: FriendsListProps) {
   const [searching, setSearching] = useState(false);
 
   const searchUsers = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || !user) return;
     setSearching(true);
+
+    // Get existing friend/pending user IDs to exclude
+    const existingUserIds = new Set<string>();
+    existingUserIds.add(user.id); // Exclude current user
+    friends.forEach(f => existingUserIds.add(f.user_id));
+    pendingRequests.forEach(p => existingUserIds.add(p.user_id));
 
     const { data } = await supabase
       .from('profiles')
       .select('user_id, full_name, avatar_url')
       .ilike('full_name', `%${searchQuery}%`)
-      .limit(10);
+      .limit(20);
 
-    setSearchResults(data || []);
+    // Filter out current user, friends, and pending requests
+    const filteredResults = (data || []).filter(
+      profile => !existingUserIds.has(profile.user_id)
+    );
+
+    setSearchResults(filteredResults);
     setSearching(false);
   };
 
