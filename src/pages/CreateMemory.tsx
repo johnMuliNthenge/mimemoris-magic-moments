@@ -13,13 +13,15 @@ import {
   Loader2,
   X,
   Smile,
-  Circle
+  Circle,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { MediaRecorder } from '@/components/memory/MediaRecorder';
 import { MoodAnalysis } from '@/components/memory/MoodAnalysis';
@@ -57,6 +59,7 @@ export default function CreateMemory() {
   const [isRecording, setIsRecording] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [isPublic, setIsPublic] = useState(false);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -119,6 +122,7 @@ export default function CreateMemory() {
         media_url: mediaUrl,
         mood: selectedMood,
         ai_analysis: aiAnalysis,
+        is_public: isPublic,
       });
 
       if (error) throw error;
@@ -128,7 +132,8 @@ export default function CreateMemory() {
         await supabase
           .from('user_subscriptions')
           .update({ 
-            memories_used_this_month: subscription.memories_used_this_month + 1 
+            memories_used_today: subscription.memories_used_today + 1,
+            last_memory_date: new Date().toISOString().split('T')[0]
           })
           .eq('id', subscription.id);
       }
@@ -170,7 +175,7 @@ export default function CreateMemory() {
             <div>
               <h1 className="font-display text-2xl font-bold">{t('create_memory')}</h1>
               <p className="text-sm text-muted-foreground">
-                {remainingMemories()} memories remaining this month
+                {remainingMemories()} memories remaining today
               </p>
             </div>
           </div>
@@ -355,6 +360,22 @@ export default function CreateMemory() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Share to Public Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
+              <div className="flex items-center gap-3">
+                <Globe className="w-5 h-5 text-primary" />
+                <div>
+                  <Label htmlFor="public">Share to Public</Label>
+                  <p className="text-xs text-muted-foreground">Make this memory visible on the public feed</p>
+                </div>
+              </div>
+              <Switch
+                id="public"
+                checked={isPublic}
+                onCheckedChange={setIsPublic}
+              />
             </div>
 
             {/* AI Mood Analysis */}

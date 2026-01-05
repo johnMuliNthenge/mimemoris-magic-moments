@@ -120,8 +120,8 @@ export default function Dashboard() {
       clickable: true
     },
     { 
-      label: 'This Month', 
-      value: subscription?.memories_used_this_month || 0, 
+      label: 'Today', 
+      value: subscription?.memories_used_today || 0, 
       icon: Calendar, 
       color: 'text-accent',
       bgColor: 'bg-accent/10',
@@ -235,13 +235,10 @@ export default function Dashboard() {
             <Card className="border-border shadow-soft">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">Memory Usage</CardTitle>
+                <div>
+                    <CardTitle className="text-lg">Daily Memory Usage</CardTitle>
                     <CardDescription>
-                      {subscription.plan.name} - {t('memories_used', { 
-                        used: subscription.memories_used_this_month, 
-                        limit: subscription.plan.memory_limit 
-                      })}
+                      {subscription.plan.name} - {subscription.memories_used_today}/{subscription.plan.daily_memory_limit} memories used today
                     </CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => navigate('/subscription')}>
@@ -249,9 +246,9 @@ export default function Dashboard() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+            <CardContent>
                 <Progress 
-                  value={(subscription.memories_used_this_month / subscription.plan.memory_limit) * 100} 
+                  value={(subscription.memories_used_today / subscription.plan.daily_memory_limit) * 100} 
                   className="h-3"
                 />
               </CardContent>

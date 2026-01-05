@@ -7,7 +7,7 @@ interface SubscriptionPlan {
   tier: 'basic' | 'standard' | 'premium';
   name: string;
   price_monthly: number;
-  memory_limit: number;
+  daily_memory_limit: number;
   languages_limited: boolean;
   features: string[];
   is_active: boolean;
@@ -20,7 +20,8 @@ interface UserSubscription {
   status: string;
   current_period_start: string;
   current_period_end: string | null;
-  memories_used_this_month: number;
+  memories_used_today: number;
+  last_memory_date: string;
   plan: SubscriptionPlan;
 }
 
@@ -71,6 +72,24 @@ export function useSubscription() {
       .maybeSingle();
 
     if (data) {
+      // Check if we need to reset daily count (new day)
+      const today = new Date().toISOString().split('T')[0];
+      const lastDate = data.last_memory_date;
+      
+      if (lastDate !== today) {
+        // Reset daily count for new day
+        await supabase
+          .from('user_subscriptions')
+          .update({ 
+            memories_used_today: 0, 
+            last_memory_date: today 
+          })
+          .eq('id', data.id);
+        
+        data.memories_used_today = 0;
+        data.last_memory_date = today;
+      }
+
       setSubscription({
         ...data,
         plan: {
@@ -84,12 +103,12 @@ export function useSubscription() {
 
   const canCreateMemory = () => {
     if (!subscription) return false;
-    return subscription.memories_used_this_month < subscription.plan.memory_limit;
+    return subscription.memories_used_today < subscription.plan.daily_memory_limit;
   };
 
   const remainingMemories = () => {
     if (!subscription) return 0;
-    return subscription.plan.memory_limit - subscription.memories_used_this_month;
+    return subscription.plan.daily_memory_limit - subscription.memories_used_today;
   };
 
   return {
