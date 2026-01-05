@@ -24,7 +24,7 @@ import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import Social from "./pages/Social";
-
+import UserProfile from "./pages/UserProfile";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -44,6 +44,7 @@ const App = () => (
             <Route path="/collaborate" element={<ProtectedRoute><Collaborate /></ProtectedRoute>} />
             <Route path="/collaborations" element={<ProtectedRoute><CollaborationsList /></ProtectedRoute>} />
             <Route path="/social" element={<ProtectedRoute><Social /></ProtectedRoute>} />
+            <Route path="/profile/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
