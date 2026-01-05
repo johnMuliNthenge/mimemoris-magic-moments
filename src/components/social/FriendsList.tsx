@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { 
@@ -36,30 +36,44 @@ export function FriendsList({ onStartChat }: FriendsListProps) {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const searchUsers = async () => {
-    if (!searchQuery.trim() || !user) return;
-    setSearching(true);
+  // Real-time search as user types
+  useEffect(() => {
+    const searchUsers = async () => {
+      if (!user) return;
+      
+      setSearching(true);
 
-    // Get existing friend/pending user IDs to exclude
-    const existingUserIds = new Set<string>();
-    existingUserIds.add(user.id); // Exclude current user
-    friends.forEach(f => existingUserIds.add(f.user_id));
-    pendingRequests.forEach(p => existingUserIds.add(p.user_id));
+      // Get existing friend/pending user IDs to exclude
+      const existingUserIds = new Set<string>();
+      existingUserIds.add(user.id); // Exclude current user
+      friends.forEach(f => existingUserIds.add(f.user_id));
+      pendingRequests.forEach(p => existingUserIds.add(p.user_id));
 
-    const { data } = await supabase
-      .from('profiles')
-      .select('user_id, full_name, avatar_url')
-      .ilike('full_name', `%${searchQuery}%`)
-      .limit(20);
+      let query = supabase
+        .from('profiles')
+        .select('user_id, full_name, avatar_url')
+        .neq('user_id', user.id);
 
-    // Filter out current user, friends, and pending requests
-    const filteredResults = (data || []).filter(
-      profile => !existingUserIds.has(profile.user_id)
-    );
+      // If there's a search query, filter by name
+      if (searchQuery.trim()) {
+        query = query.ilike('full_name', `%${searchQuery}%`);
+      }
 
-    setSearchResults(filteredResults);
-    setSearching(false);
-  };
+      const { data } = await query.limit(20);
+
+      // Filter out current user, friends, and pending requests
+      const filteredResults = (data || []).filter(
+        profile => !existingUserIds.has(profile.user_id)
+      );
+
+      setSearchResults(filteredResults);
+      setSearching(false);
+    };
+
+    // Debounce search
+    const timeoutId = setTimeout(searchUsers, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, user, friends, pendingRequests]);
 
   const handleSendRequest = async (userId: string) => {
     const { error } = await sendFriendRequest(userId);
@@ -112,16 +126,17 @@ export function FriendsList({ onStartChat }: FriendsListProps) {
           <CardDescription>Search for users to add as friends</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name..."
+              placeholder="Start typing to find users..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
+              className="pl-10"
             />
-            <Button onClick={searchUsers} disabled={searching}>
-              {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            </Button>
+            {searching && (
+              <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+            )}
           </div>
           
           {searchResults.length > 0 && (
