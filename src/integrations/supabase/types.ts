@@ -444,6 +444,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_collaboration_host: {
+        Args: { _collaboration_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_collaboration_participant: {
+        Args: { _collaboration_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
