@@ -223,7 +223,7 @@ export default function UserProfile() {
                       )}
                     </Button>
                     {isFriend && (
-                      <Button variant="outline" onClick={() => navigate('/social')}>
+                      <Button variant="outline" onClick={() => navigate('/friends')}>
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Message
                       </Button>

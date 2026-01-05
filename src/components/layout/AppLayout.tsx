@@ -34,9 +34,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: t('nav_home') },
-    { path: '/social', icon: Globe, label: 'Social' },
+    { path: '/friends', icon: Users, label: t('nav_friends') },
     { path: '/memories', icon: BookHeart, label: t('nav_memories') },
-    { path: '/collaborate', icon: Users, label: t('nav_collaborate') },
+    { path: '/collaborate', icon: Globe, label: t('nav_collaborate') },
     { path: '/subscription', icon: CreditCard, label: t('nav_subscription') },
     { path: '/settings', icon: Settings, label: t('nav_settings') },
   ];
