@@ -12,6 +12,12 @@ interface Friend {
   is_follower: boolean;
 }
 
+interface Profile {
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 export function useFriends() {
   const { user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -31,25 +37,42 @@ export function useFriends() {
     // Get people I'm following
     const { data: following } = await supabase
       .from('user_follows')
-      .select('*, profiles!user_follows_following_id_fkey(*)')
+      .select('*')
       .eq('follower_id', user.id);
 
     // Get people following me
     const { data: followers } = await supabase
       .from('user_follows')
-      .select('*, profiles!user_follows_follower_id_fkey(*)')
+      .select('*')
       .eq('following_id', user.id);
+
+    // Get all user IDs we need profiles for
+    const userIds = new Set<string>();
+    following?.forEach(f => userIds.add(f.following_id));
+    followers?.forEach(f => userIds.add(f.follower_id));
+
+    // Fetch profiles
+    const { data: profiles } = userIds.size > 0 
+      ? await supabase
+          .from('profiles')
+          .select('user_id, full_name, avatar_url')
+          .in('user_id', Array.from(userIds))
+      : { data: [] as Profile[] };
+
+    const profileMap = new Map<string, Profile>();
+    profiles?.forEach(p => profileMap.set(p.user_id, p));
 
     const friendsList: Friend[] = [];
     const pendingList: Friend[] = [];
 
     // Process following
     following?.forEach(f => {
+      const profile = profileMap.get(f.following_id);
       const friend: Friend = {
         id: f.id,
         user_id: f.following_id,
-        full_name: (f as any).profiles?.full_name || null,
-        avatar_url: (f as any).profiles?.avatar_url || null,
+        full_name: profile?.full_name || null,
+        avatar_url: profile?.avatar_url || null,
         status: f.status as 'pending' | 'accepted' | 'rejected',
         created_at: f.created_at,
         is_follower: false
@@ -64,12 +87,13 @@ export function useFriends() {
 
     // Process followers (pending requests to me)
     followers?.forEach(f => {
+      const profile = profileMap.get(f.follower_id);
       if (f.status === 'pending') {
         pendingList.push({
           id: f.id,
           user_id: f.follower_id,
-          full_name: (f as any).profiles?.full_name || null,
-          avatar_url: (f as any).profiles?.avatar_url || null,
+          full_name: profile?.full_name || null,
+          avatar_url: profile?.avatar_url || null,
           status: f.status as 'pending' | 'accepted' | 'rejected',
           created_at: f.created_at,
           is_follower: true
@@ -81,8 +105,8 @@ export function useFriends() {
           friendsList.push({
             id: f.id,
             user_id: f.follower_id,
-            full_name: (f as any).profiles?.full_name || null,
-            avatar_url: (f as any).profiles?.avatar_url || null,
+            full_name: profile?.full_name || null,
+            avatar_url: profile?.avatar_url || null,
             status: f.status as 'pending' | 'accepted' | 'rejected',
             created_at: f.created_at,
             is_follower: true
