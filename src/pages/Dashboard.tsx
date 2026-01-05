@@ -176,13 +176,23 @@ export default function Dashboard() {
               Ready to capture today's memories?
             </p>
           </div>
-          <Button 
-            onClick={() => navigate('/memories/new')}
-            className="gradient-warm text-primary-foreground gap-2 shadow-glow"
-          >
-            <Plus className="w-5 h-5" />
-            {t('create_memory')}
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/friends')}
+              className="gap-2"
+            >
+              <Users className="w-5 h-5" />
+              {t('nav_friends')}
+            </Button>
+            <Button 
+              onClick={() => navigate('/memories/new')}
+              className="gradient-warm text-primary-foreground gap-2 shadow-glow"
+            >
+              <Plus className="w-5 h-5" />
+              {t('create_memory')}
+            </Button>
+          </div>
         </motion.div>
 
         {/* Stats Grid - Clickable */}
