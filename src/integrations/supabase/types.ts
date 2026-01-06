@@ -509,27 +509,7 @@ export type Database = {
       }
     }
     Views: {
-      profile_search: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          full_name: string | null
-          user_id: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       has_role: {
@@ -550,6 +530,14 @@ export type Database = {
       is_friend: {
         Args: { _friend_id: string; _user_id: string }
         Returns: boolean
+      }
+      search_users_for_discovery: {
+        Args: { page_num?: number; page_size?: number; search_term?: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          user_id: string
+        }[]
       }
     }
     Enums: {
