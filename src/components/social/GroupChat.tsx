@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Settings, Link, QrCode, UserPlus, LogOut } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Link, QrCode, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroupChat } from '@/hooks/useGroupChat';
+import { AddMembersDialog } from './AddMembersDialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -206,6 +207,7 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
     isAdmin, 
     leaveGroup,
     removeMember,
+    addMember,
     loading 
   } = useGroupChat(groupId);
   
@@ -339,6 +341,17 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
               <SheetHeader>
                 <SheetTitle>Group Members ({members.length}/500)</SheetTitle>
               </SheetHeader>
+              
+              {/* Add Friends button for admins */}
+              {isAdmin() && (
+                <div className="mt-4">
+                  <AddMembersDialog 
+                    groupId={groupId}
+                    existingMemberIds={members.map(m => m.user_id)}
+                    onAddMember={addMember}
+                  />
+                </div>
+              )}
               <ScrollArea className="h-[calc(100vh-120px)] mt-4">
                 <div className="space-y-2">
                   {members.map(member => (
