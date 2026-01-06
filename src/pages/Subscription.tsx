@@ -28,7 +28,7 @@ export default function SubscriptionPage() {
     openCustomerPortal,
     checkSubscription 
   } = useStripeSubscription();
-  const { configuredMethods } = usePaymentMethods();
+  const { configuredMethods, refetch: refetchPaymentMethods } = usePaymentMethods();
   const { toast } = useToast();
   const [processingMethod, setProcessingMethod] = useState<string | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -62,6 +62,8 @@ export default function SubscriptionPage() {
       });
       return;
     }
+    // Refresh payment methods config before showing dialog
+    refetchPaymentMethods();
     setSelectedPlan(plan);
     setShowPaymentDialog(true);
   };
