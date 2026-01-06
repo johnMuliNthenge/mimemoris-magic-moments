@@ -54,7 +54,7 @@ export function FriendsList({ onStartChat }: FriendsListProps) {
     setSearching(true);
     const currentPage = isLoadMore ? page : 0;
 
-    // Get existing friend/pending user IDs to exclude
+    // Get existing friend/pending user IDs to exclude (client-side filtering)
     const existingUserIds = new Set<string>();
     existingUserIds.add(user.id);
     friends.forEach(f => existingUserIds.add(f.user_id));
@@ -62,18 +62,19 @@ export function FriendsList({ onStartChat }: FriendsListProps) {
     // Also exclude blocked users
     blockedUsers.forEach(b => existingUserIds.add(b.blocked_id));
 
-    let query = supabase
-      .from('profiles')
-      .select('user_id, full_name, avatar_url')
-      .neq('user_id', user.id)
-      .order('full_name', { ascending: true })
-      .range(currentPage * USERS_PER_PAGE, (currentPage + 1) * USERS_PER_PAGE - 1);
+    // Use secure RPC function that only exposes limited profile info (name, avatar)
+    // This prevents exposure of sensitive PII like phone numbers
+    const { data, error } = await supabase.rpc('search_users_for_discovery', {
+      search_term: searchQuery.trim(),
+      page_num: currentPage,
+      page_size: USERS_PER_PAGE
+    });
 
-    if (searchQuery.trim()) {
-      query = query.ilike('full_name', `%${searchQuery}%`);
+    if (error) {
+      console.error('Error searching users:', error);
+      setSearching(false);
+      return;
     }
-
-    const { data } = await query;
 
     const filteredResults = (data || []).filter(
       profile => !existingUserIds.has(profile.user_id)
