@@ -166,15 +166,15 @@ export default function SocialPage() {
           <TabsContent value="groups">
             <div className="grid md:grid-cols-3 gap-4 h-[600px]">
               {/* Groups list */}
-              <div className="md:col-span-1 border border-border rounded-lg overflow-hidden">
-                <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between">
-                  <h3 className="font-medium">Groups</h3>
+              <div className="md:col-span-1 border border-border rounded-lg overflow-hidden flex flex-col">
+                <div className="p-3 border-b border-border bg-muted/30">
+                  <h3 className="font-medium">My Groups ({groups.length})</h3>
                 </div>
-                <div className="p-3 border-b border-border flex gap-2">
+                <div className="p-3 border-b border-border flex flex-col gap-2">
                   <CreateGroupDialog onGroupCreated={(id) => setSelectedGroupId(id)} />
                   <JoinGroupDialog onGroupJoined={(id) => setSelectedGroupId(id)} />
                 </div>
-                <ScrollArea className="h-[calc(100%-112px)]">
+                <ScrollArea className="flex-1">
                   {groups.length === 0 ? (
                     <div className="p-4 text-center text-muted-foreground text-sm">
                       <p>No groups yet</p>
@@ -188,7 +188,7 @@ export default function SocialPage() {
                           onClick={() => selectGroup(group.id)}
                           className={cn(
                             "w-full p-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left",
-                            selectedGroupId === group.id && "bg-muted"
+                            selectedGroupId === group.id && "bg-primary/10 border-l-2 border-primary"
                           )}
                         >
                           <Avatar className="w-10 h-10">
@@ -198,7 +198,12 @@ export default function SocialPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{group.name}</p>
+                            <p className={cn(
+                              "font-medium truncate",
+                              selectedGroupId === group.id && "text-primary"
+                            )}>
+                              {group.name}
+                            </p>
                             {group.description && (
                               <p className="text-xs text-muted-foreground truncate">
                                 {group.description}
