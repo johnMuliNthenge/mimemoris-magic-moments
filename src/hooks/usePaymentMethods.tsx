@@ -65,8 +65,17 @@ export function usePaymentMethods() {
       }
     };
     
+    // Listen for custom event (when admin updates config in same tab)
+    const handlePaymentConfigUpdated = () => {
+      checkPaymentMethods();
+    };
+    
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('paymentConfigUpdated', handlePaymentConfigUpdated);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('paymentConfigUpdated', handlePaymentConfigUpdated);
+    };
   }, [checkPaymentMethods]);
 
   return { configuredMethods, loading, refetch: checkPaymentMethods };
