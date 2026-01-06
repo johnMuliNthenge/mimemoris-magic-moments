@@ -1,8 +1,10 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminStripeSetup } from '@/components/admin/AdminStripeSetup';
+import { AdminPayPalSetup } from '@/components/admin/AdminPayPalSetup';
+import { AdminMpesaSetup } from '@/components/admin/AdminMpesaSetup';
 import { AdminEmailSetup } from '@/components/admin/AdminEmailSetup';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Mail } from 'lucide-react';
+import { CreditCard, Mail, Wallet, Smartphone } from 'lucide-react';
 
 export default function AdminSettings() {
   return (
@@ -19,7 +21,15 @@ export default function AdminSettings() {
           <TabsList>
             <TabsTrigger value="payments" className="gap-2">
               <CreditCard className="w-4 h-4" />
-              Payments
+              Stripe
+            </TabsTrigger>
+            <TabsTrigger value="paypal" className="gap-2">
+              <Wallet className="w-4 h-4" />
+              PayPal
+            </TabsTrigger>
+            <TabsTrigger value="mpesa" className="gap-2">
+              <Smartphone className="w-4 h-4" />
+              M-Pesa
             </TabsTrigger>
             <TabsTrigger value="email" className="gap-2">
               <Mail className="w-4 h-4" />
@@ -29,6 +39,14 @@ export default function AdminSettings() {
           
           <TabsContent value="payments">
             <AdminStripeSetup />
+          </TabsContent>
+          
+          <TabsContent value="paypal">
+            <AdminPayPalSetup />
+          </TabsContent>
+          
+          <TabsContent value="mpesa">
+            <AdminMpesaSetup />
           </TabsContent>
           
           <TabsContent value="email">
