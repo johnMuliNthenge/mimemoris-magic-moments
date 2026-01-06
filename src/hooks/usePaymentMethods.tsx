@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
 
 interface PaymentMethodsConfig {
   stripe: boolean;
@@ -15,23 +14,34 @@ export function usePaymentMethods() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkPaymentMethods();
-  }, []);
-
-  const checkPaymentMethods = async () => {
+  const checkPaymentMethods = useCallback(() => {
     try {
-      // Check Stripe - we can assume it's configured if the project has Stripe secret
-      // For now, we'll check via an edge function or assume it's available
-      const stripeConfigured = true; // Stripe is pre-configured in this project
+      // Check Stripe - pre-configured in this project
+      const stripeConfigured = true;
 
       // Check PayPal configuration from localStorage (admin sets this)
       const paypalConfig = localStorage.getItem('paypal_config');
-      const paypalConfigured = paypalConfig ? JSON.parse(paypalConfig).isConfigured : false;
+      let paypalConfigured = false;
+      if (paypalConfig) {
+        try {
+          const parsed = JSON.parse(paypalConfig);
+          paypalConfigured = parsed.isConfigured === true;
+        } catch {
+          paypalConfigured = false;
+        }
+      }
 
       // Check M-Pesa configuration from localStorage (admin sets this)
       const mpesaConfig = localStorage.getItem('mpesa_config');
-      const mpesaConfigured = mpesaConfig ? JSON.parse(mpesaConfig).isConfigured : false;
+      let mpesaConfigured = false;
+      if (mpesaConfig) {
+        try {
+          const parsed = JSON.parse(mpesaConfig);
+          mpesaConfigured = parsed.isConfigured === true;
+        } catch {
+          mpesaConfigured = false;
+        }
+      }
 
       setConfiguredMethods({
         stripe: stripeConfigured,
@@ -43,7 +53,21 @@ export function usePaymentMethods() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkPaymentMethods();
+    
+    // Listen for storage changes (when admin updates config in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'paypal_config' || e.key === 'mpesa_config') {
+        checkPaymentMethods();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [checkPaymentMethods]);
 
   return { configuredMethods, loading, refetch: checkPaymentMethods };
 }
