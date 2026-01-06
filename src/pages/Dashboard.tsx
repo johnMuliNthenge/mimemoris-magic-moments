@@ -19,6 +19,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { MemoryQuery } from '@/components/memory/MemoryQuery';
+import { SubscriptionStatusCard } from '@/components/dashboard/SubscriptionStatusCard';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -235,7 +236,10 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Subscription Progress */}
+        {/* Subscription Status Card */}
+        <SubscriptionStatusCard />
+
+        {/* Daily Memory Usage Progress */}
         {subscription && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -245,7 +249,7 @@ export default function Dashboard() {
             <Card className="border-border shadow-soft">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                <div>
+                  <div>
                     <CardTitle className="text-lg">Daily Memory Usage</CardTitle>
                     <CardDescription>
                       {subscription.plan.name} - {subscription.memories_used_today}/{subscription.plan.daily_memory_limit} memories used today
@@ -256,7 +260,7 @@ export default function Dashboard() {
                   </Button>
                 </div>
               </CardHeader>
-            <CardContent>
+              <CardContent>
                 <Progress 
                   value={(subscription.memories_used_today / subscription.plan.daily_memory_limit) * 100} 
                   className="h-3"
