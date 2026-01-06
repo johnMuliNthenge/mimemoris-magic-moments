@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Link, QrCode, LogOut } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Link, QrCode, LogOut, Image, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,10 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroupChat } from '@/hooks/useGroupChat';
 import { AddMembersDialog } from './AddMembersDialog';
+import { MediaPlayer } from './MediaPlayer';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import QRCode from 'react-qr-code';
+import { supabase } from '@/integrations/supabase/client';
+import { compressImage } from '@/lib/media-utils';
 
 interface GroupChatProps {
   groupId: string;
@@ -149,7 +152,35 @@ function GroupMessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, in
                 </div>
               ) : (
                 <>
-                  <p className="text-sm">{msg.content}</p>
+                  {msg.media_url && (
+                    <div className="mb-2 max-w-[260px]">
+                      {msg.media_type === 'video' ? (
+                        <MediaPlayer 
+                          src={msg.media_url} 
+                          type="video"
+                          className="rounded-lg max-h-[200px]"
+                        />
+                      ) : (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <img 
+                              src={msg.media_url} 
+                              alt="Shared media" 
+                              className="rounded-lg max-h-[200px] w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                            />
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl">
+                            <img 
+                              src={msg.media_url} 
+                              alt="Shared media" 
+                              className="w-full h-auto rounded-lg"
+                            />
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
+                  )}
+                  {msg.content && <p className="text-sm">{msg.content}</p>}
                   <div className={cn(
                     "flex items-center gap-1 mt-1",
                     isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
@@ -215,19 +246,95 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<any>(null);
   const [showQR, setShowQR] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      toast.error('Please select an image or video file');
+      return;
+    }
+
+    // Check video size (max 50MB)
+    if (isVideo && file.size > 50 * 1024 * 1024) {
+      toast.error('Video must be under 50MB');
+      return;
+    }
+
+    setSelectedMedia(file);
+    setMediaPreview(URL.createObjectURL(file));
+  };
+
+  const clearMedia = () => {
+    setSelectedMedia(null);
+    if (mediaPreview) {
+      URL.revokeObjectURL(mediaPreview);
+      setMediaPreview(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !selectedMedia) return;
     
     setSending(true);
-    await sendMessage(newMessage.trim(), replyTo?.id);
+    let mediaUrl: string | undefined;
+    let mediaType: string | undefined;
+
+    // Upload media if selected
+    if (selectedMedia) {
+      setUploading(true);
+      try {
+        let fileToUpload = selectedMedia;
+        
+        // Compress images
+        if (selectedMedia.type.startsWith('image/')) {
+          fileToUpload = await compressImage(selectedMedia);
+        }
+
+        const fileExt = selectedMedia.name.split('.').pop();
+        const fileName = `group-chat/${groupId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('memories')
+          .upload(fileName, fileToUpload);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('memories')
+          .getPublicUrl(fileName);
+
+        mediaUrl = publicUrl;
+        mediaType = selectedMedia.type.startsWith('video/') ? 'video' : 'image';
+      } catch (error) {
+        toast.error('Failed to upload media');
+        setUploading(false);
+        setSending(false);
+        return;
+      }
+      setUploading(false);
+    }
+
+    await sendMessage(newMessage.trim() || ' ', replyTo?.id, mediaUrl, mediaType);
     setNewMessage('');
     setReplyTo(null);
+    clearMedia();
     setSending(false);
   };
 
@@ -447,18 +554,66 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
         </div>
       )}
 
+      {/* Media preview */}
+      {mediaPreview && (
+        <div className="px-4 py-2 border-t border-border bg-muted/30">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              {selectedMedia?.type.startsWith('video/') ? (
+                <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+                  <Play className="w-6 h-6 text-muted-foreground" />
+                </div>
+              ) : (
+                <img 
+                  src={mediaPreview} 
+                  alt="Selected" 
+                  className="w-16 h-16 object-cover rounded-lg"
+                />
+              )}
+              <Button 
+                variant="secondary" 
+                size="icon" 
+                className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
+                onClick={clearMedia}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {selectedMedia?.name}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-4 border-t border-border">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleMediaSelect}
+          className="hidden"
+        />
         <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending || uploading}
+          >
+            <Image className="w-5 h-5" />
+          </Button>
           <Input
             placeholder="Type a message..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            disabled={sending}
+            disabled={sending || uploading}
+            className="flex-1"
           />
-          <Button onClick={handleSend} disabled={sending || !newMessage.trim()}>
-            {sending ? (
+          <Button onClick={handleSend} disabled={(sending || uploading) || (!newMessage.trim() && !selectedMedia)}>
+            {sending || uploading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Send className="w-4 h-4" />

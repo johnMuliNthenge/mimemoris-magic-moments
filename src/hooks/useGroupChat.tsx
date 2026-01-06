@@ -11,6 +11,8 @@ interface GroupMessage {
   edited_at: string | null;
   is_deleted: boolean;
   created_at: string;
+  media_url?: string | null;
+  media_type?: string | null;
   sender_profile?: {
     full_name: string | null;
     avatar_url: string | null;
@@ -249,7 +251,7 @@ export function useGroupChat(groupId?: string) {
     return { error: null, groupId: group.id };
   };
 
-  const sendMessage = async (content: string, replyToId?: string) => {
+  const sendMessage = async (content: string, replyToId?: string, mediaUrl?: string, mediaType?: string) => {
     if (!user || !groupId) return { error: 'Not authenticated' };
 
     const { error } = await supabase
@@ -258,7 +260,9 @@ export function useGroupChat(groupId?: string) {
         group_id: groupId,
         sender_id: user.id,
         content,
-        reply_to_id: replyToId || null
+        reply_to_id: replyToId || null,
+        media_url: mediaUrl || null,
+        media_type: mediaType || null
       });
 
     return { error: error?.message || null };
