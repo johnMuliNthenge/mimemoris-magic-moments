@@ -17,7 +17,9 @@ import {
   Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useFriends } from '@/hooks/useFriends';
 import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
@@ -29,16 +31,20 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
+  const { pendingRequests } = useFriends();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
+  // Count incoming friend requests (where current user is the recipient)
+  const incomingRequestCount = pendingRequests.filter(r => r.is_follower).length;
+
   const navItems = [
-    { path: '/dashboard', icon: Home, label: t('nav_home') },
-    { path: '/friends', icon: Users, label: t('nav_friends') },
-    { path: '/memories', icon: BookHeart, label: t('nav_memories') },
-    { path: '/collaborate', icon: Globe, label: t('nav_collaborate') },
-    { path: '/subscription', icon: CreditCard, label: t('nav_subscription') },
-    { path: '/settings', icon: Settings, label: t('nav_settings') },
+    { path: '/dashboard', icon: Home, label: t('nav_home'), badge: 0 },
+    { path: '/friends', icon: Users, label: t('nav_friends'), badge: incomingRequestCount },
+    { path: '/memories', icon: BookHeart, label: t('nav_memories'), badge: 0 },
+    { path: '/collaborate', icon: Globe, label: t('nav_collaborate'), badge: 0 },
+    { path: '/subscription', icon: CreditCard, label: t('nav_subscription'), badge: 0 },
+    { path: '/settings', icon: Settings, label: t('nav_settings'), badge: 0 },
   ];
 
   const handleSignOut = async () => {
@@ -84,7 +90,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                   )}
                 >
                   <item.icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
+                  <span className="font-medium flex-1">{item.label}</span>
+                  {item.badge > 0 && (
+                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5 justify-center">
+                      {item.badge}
+                    </Badge>
+                  )}
                 </Link>
               );
             })}
@@ -173,7 +184,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                     )}
                   >
                     <item.icon className="w-5 h-5" />
-                    <span>{item.label}</span>
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge > 0 && (
+                      <Badge variant="destructive" className="h-5 min-w-5 px-1.5 justify-center">
+                        {item.badge}
+                      </Badge>
+                    )}
                   </Link>
                 );
               })}
