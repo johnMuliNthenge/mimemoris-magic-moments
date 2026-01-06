@@ -165,19 +165,19 @@ export function PublicFeed() {
                   )}
 
                   {memory.media_url && (
-                    <div className="rounded-lg overflow-hidden">
+                    <div className="rounded-lg overflow-hidden bg-muted">
                       {memory.memory_type === 'photo' && (
                         <img 
                           src={memory.media_url} 
                           alt={memory.title || 'Memory'} 
-                          className="w-full max-h-96 object-cover"
+                          className="w-full max-h-[400px] object-contain mx-auto"
                         />
                       )}
                       {memory.memory_type === 'video' && (
                         <MediaPlayer 
                           src={memory.media_url} 
                           type="video" 
-                          className="max-h-96"
+                          className="max-h-[400px]"
                         />
                       )}
                       {memory.memory_type === 'audio' && (

@@ -5,17 +5,18 @@ import {
   Video, 
   X, 
   Loader2, 
-  Send,
-  Type
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { validateSafeInput } from '@/lib/security';
+import { compressImage, formatFileSize } from '@/lib/media-utils';
 
 interface CreatePostProps {
   onPostCreated: () => void;
@@ -33,12 +34,13 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'photo' | 'video' | 'text'>('text');
   const [loading, setLoading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_VIDEO_DURATION = 30; // seconds
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -47,14 +49,30 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
       return;
     }
     
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'File too large', description: 'Image must be less than 10MB' });
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'File too large', description: 'Image must be less than 20MB' });
       return;
     }
 
-    setMediaFile(file);
-    setMediaType('photo');
-    setMediaPreview(URL.createObjectURL(file));
+    setCompressing(true);
+    try {
+      // Compress the image
+      const compressedFile = await compressImage(file);
+      setMediaFile(compressedFile);
+      setMediaType('photo');
+      setMediaPreview(URL.createObjectURL(compressedFile));
+      toast({ 
+        title: 'Image optimized', 
+        description: `Compressed from ${formatFileSize(file.size)} to ${formatFileSize(compressedFile.size)}` 
+      });
+    } catch (error) {
+      // If compression fails, use original
+      setMediaFile(file);
+      setMediaType('photo');
+      setMediaPreview(URL.createObjectURL(file));
+    } finally {
+      setCompressing(false);
+    }
   };
 
   const handleVideoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,12 +140,15 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
 
       // Upload media if present
       if (mediaFile) {
-        const fileExt = mediaFile.name.split('.').pop();
+        // Use jpeg extension for compressed images
+        const fileExt = mediaType === 'photo' ? 'jpg' : mediaFile.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('memories')
-          .upload(fileName, mediaFile);
+          .upload(fileName, mediaFile, {
+            contentType: mediaType === 'photo' ? 'image/jpeg' : undefined,
+          });
         
         if (uploadError) throw uploadError;
         
@@ -201,11 +222,17 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
                     <X className="w-4 h-4" />
                   </Button>
                   
+                  {mediaFile && (
+                    <Badge variant="secondary" className="absolute top-2 left-2 z-10">
+                      {formatFileSize(mediaFile.size)}
+                    </Badge>
+                  )}
+                  
                   {mediaType === 'photo' && (
                     <img 
                       src={mediaPreview} 
                       alt="Preview" 
-                      className="w-full max-h-64 object-cover"
+                      className="w-full max-h-64 object-contain bg-muted"
                     />
                   )}
                   
@@ -213,7 +240,7 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
                     <video 
                       src={mediaPreview} 
                       controls 
-                      className="w-full max-h-64"
+                      className="w-full max-h-64 object-contain bg-black"
                     />
                   )}
                 </motion.div>
@@ -242,17 +269,21 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
                   variant="ghost" 
                   size="sm" 
                   onClick={() => imageInputRef.current?.click()}
-                  disabled={loading}
+                  disabled={loading || compressing}
                 >
-                  <Image className="w-4 h-4 mr-1" />
-                  Image
+                  {compressing ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Image className="w-4 h-4 mr-1" />
+                  )}
+                  {compressing ? 'Compressing...' : 'Image'}
                 </Button>
                 
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => videoInputRef.current?.click()}
-                  disabled={loading}
+                  disabled={loading || compressing}
                 >
                   <Video className="w-4 h-4 mr-1" />
                   Video (30s)
