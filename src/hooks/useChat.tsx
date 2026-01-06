@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -9,6 +9,10 @@ interface Message {
   content: string;
   is_read: boolean;
   created_at: string;
+  reply_to_id: string | null;
+  edited_at: string | null;
+  is_deleted: boolean;
+  reply_to?: Message;
 }
 
 interface ChatUser {
@@ -28,7 +32,8 @@ export function useChat(selectedUserId?: string) {
   useEffect(() => {
     if (user) {
       fetchConversations();
-      subscribeToMessages();
+      const cleanup = subscribeToMessages();
+      return cleanup;
     }
   }, [user]);
 
@@ -104,24 +109,48 @@ export function useChat(selectedUserId?: string) {
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
-    setMessages((data as Message[]) || []);
+    // Fetch reply messages if any
+    const messagesWithReplies = await Promise.all(
+      (data || []).map(async (msg) => {
+        if (msg.reply_to_id) {
+          const { data: replyMsg } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('id', msg.reply_to_id)
+            .single();
+          return { ...msg, reply_to: replyMsg } as Message;
+        }
+        return msg as Message;
+      })
+    );
+
+    setMessages(messagesWithReplies);
   };
 
   const subscribeToMessages = () => {
-    if (!user) return;
+    if (!user) return () => {};
 
     const channel = supabase
       .channel('chat-messages')
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'chat_messages'
       }, (payload) => {
-        const newMsg = payload.new as Message;
-        if (newMsg.sender_id === user.id || newMsg.receiver_id === user.id) {
-          if (selectedUserId && (newMsg.sender_id === selectedUserId || newMsg.receiver_id === selectedUserId)) {
-            setMessages(prev => [...prev, newMsg]);
+        if (payload.eventType === 'INSERT') {
+          const newMsg = payload.new as Message;
+          if (newMsg.sender_id === user.id || newMsg.receiver_id === user.id) {
+            if (selectedUserId && (newMsg.sender_id === selectedUserId || newMsg.receiver_id === selectedUserId)) {
+              setMessages(prev => [...prev, newMsg]);
+            }
+            fetchConversations();
           }
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedMsg = payload.new as Message;
+          setMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg } : m));
+        } else if (payload.eventType === 'DELETE') {
+          const deletedMsg = payload.old as { id: string };
+          setMessages(prev => prev.filter(m => m.id !== deletedMsg.id));
           fetchConversations();
         }
       })
@@ -132,7 +161,7 @@ export function useChat(selectedUserId?: string) {
     };
   };
 
-  const sendMessage = async (receiverId: string, content: string) => {
+  const sendMessage = async (receiverId: string, content: string, replyToId?: string) => {
     if (!user) return { error: 'Not authenticated' };
 
     const { data, error } = await supabase
@@ -140,7 +169,8 @@ export function useChat(selectedUserId?: string) {
       .insert({
         sender_id: user.id,
         receiver_id: receiverId,
-        content
+        content,
+        reply_to_id: replyToId || null
       })
       .select()
       .single();
@@ -150,6 +180,46 @@ export function useChat(selectedUserId?: string) {
     }
 
     return { error, data };
+  };
+
+  const editMessage = async (messageId: string, newContent: string) => {
+    if (!user) return { error: 'Not authenticated' };
+
+    const { error } = await supabase
+      .from('chat_messages')
+      .update({ 
+        content: newContent,
+        edited_at: new Date().toISOString()
+      })
+      .eq('id', messageId)
+      .eq('sender_id', user.id);
+
+    if (!error) {
+      setMessages(prev => prev.map(m => 
+        m.id === messageId 
+          ? { ...m, content: newContent, edited_at: new Date().toISOString() } 
+          : m
+      ));
+    }
+
+    return { error };
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    if (!user) return { error: 'Not authenticated' };
+
+    const { error } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('id', messageId)
+      .eq('sender_id', user.id);
+
+    if (!error) {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      fetchConversations();
+    }
+
+    return { error };
   };
 
   const markAsRead = async (senderId: string) => {
@@ -165,13 +235,23 @@ export function useChat(selectedUserId?: string) {
     fetchConversations();
   };
 
+  const canEditMessage = useCallback((message: Message) => {
+    if (!user || message.sender_id !== user.id) return false;
+    const createdAt = new Date(message.created_at).getTime();
+    const now = Date.now();
+    return (now - createdAt) <= 40000; // 40 seconds
+  }, [user]);
+
   return {
     conversations,
     messages,
     loading,
     sendMessage,
+    editMessage,
+    deleteMessage,
     fetchMessages,
     markAsRead,
+    canEditMessage,
     refetch: fetchConversations
   };
 }
