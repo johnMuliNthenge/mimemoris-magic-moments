@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useSubscription, SubscriptionPlan } from '@/hooks/useSubscription';
 import { useStripeSubscription } from '@/hooks/useStripeSubscription';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { StripeTier } from '@/lib/stripe-config';
+import { PaymentMethodDialog } from '@/components/subscription/PaymentMethodDialog';
 
 export default function SubscriptionPage() {
   const { t } = useTranslation();
@@ -26,8 +28,11 @@ export default function SubscriptionPage() {
     openCustomerPortal,
     checkSubscription 
   } = useStripeSubscription();
+  const { configuredMethods } = usePaymentMethods();
   const { toast } = useToast();
-  const [processingTier, setProcessingTier] = useState<string | null>(null);
+  const [processingMethod, setProcessingMethod] = useState<string | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
 
   // Handle success/cancel redirects from Stripe
   useEffect(() => {
@@ -48,7 +53,7 @@ export default function SubscriptionPage() {
     }
   }, [searchParams, toast, navigate, checkSubscription]);
 
-  const handleSelectPlan = async (tier: StripeTier, stripePriceId?: string) => {
+  const handleOpenPaymentDialog = (plan: SubscriptionPlan) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -57,31 +62,68 @@ export default function SubscriptionPage() {
       });
       return;
     }
+    setSelectedPlan(plan);
+    setShowPaymentDialog(true);
+  };
 
-    if (!stripePriceId) {
-      toast({
-        variant: 'destructive',
-        title: 'Configuration Error',
-        description: 'This plan is not properly configured for payments.',
-      });
-      return;
-    }
+  const handlePaymentMethodSelect = async (method: 'stripe' | 'paypal' | 'mpesa') => {
+    if (!selectedPlan) return;
 
-    try {
-      setProcessingTier(tier);
-      const url = await createCheckout(stripePriceId);
-      
-      if (url) {
-        window.open(url, '_blank');
+    if (method === 'stripe') {
+      if (!selectedPlan.stripe_price_id) {
+        toast({
+          variant: 'destructive',
+          title: 'Configuration Error',
+          description: 'Stripe is not properly configured for this plan.',
+        });
+        return;
       }
-    } catch (error: any) {
+
+      try {
+        setProcessingMethod('stripe');
+        const url = await createCheckout(selectedPlan.stripe_price_id);
+        
+        if (url) {
+          window.open(url, '_blank');
+        }
+        setShowPaymentDialog(false);
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error.message || 'Failed to start checkout',
+        });
+      } finally {
+        setProcessingMethod(null);
+      }
+    } else if (method === 'paypal') {
+      if (!configuredMethods.paypal) {
+        toast({
+          variant: 'destructive',
+          title: 'Not Available',
+          description: 'PayPal payment is not configured. Please contact support.',
+        });
+        return;
+      }
+      
       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Failed to start checkout',
+        title: 'PayPal',
+        description: 'PayPal checkout coming soon. Please use another payment method.',
       });
-    } finally {
-      setProcessingTier(null);
+    } else if (method === 'mpesa') {
+      if (!configuredMethods.mpesa) {
+        toast({
+          variant: 'destructive',
+          title: 'Not Available',
+          description: 'M-Pesa payment is not configured. Please contact support.',
+        });
+        return;
+      }
+      
+      toast({
+        title: 'M-Pesa',
+        description: 'M-Pesa checkout coming soon. Please use another payment method.',
+      });
     }
   };
 
@@ -147,7 +189,6 @@ export default function SubscriptionPage() {
             const tier = plan.tier as StripeTier;
             const isCurrentPlan = stripeSubscription?.tier === tier;
             const isPremium = plan.tier === 'premium';
-            const isProcessing = processingTier === tier;
 
             return (
               <motion.div
@@ -201,15 +242,10 @@ export default function SubscriptionPage() {
                         isCurrentPlan ? "bg-muted text-muted-foreground" : ""
                       )}
                       variant={isPremium ? "default" : "outline"}
-                      disabled={isCurrentPlan || isProcessing || !plan.stripe_price_id}
-                      onClick={() => handleSelectPlan(tier, plan.stripe_price_id)}
+                      disabled={isCurrentPlan || !!processingMethod}
+                      onClick={() => handleOpenPaymentDialog(plan)}
                     >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : isCurrentPlan ? (
+                      {isCurrentPlan ? (
                         'Current Plan'
                       ) : stripeSubscription?.subscribed ? (
                         'Change Plan'
@@ -236,6 +272,19 @@ export default function SubscriptionPage() {
               {new Date(stripeSubscription.subscription_end).toLocaleDateString()}
             </p>
           </motion.div>
+        )}
+
+        {/* Payment Method Dialog */}
+        {selectedPlan && (
+          <PaymentMethodDialog
+            open={showPaymentDialog}
+            onOpenChange={setShowPaymentDialog}
+            planName={selectedPlan.name}
+            planPrice={selectedPlan.price_monthly}
+            onSelectMethod={handlePaymentMethodSelect}
+            processingMethod={processingMethod}
+            configuredMethods={configuredMethods}
+          />
         )}
       </div>
     </AppLayout>

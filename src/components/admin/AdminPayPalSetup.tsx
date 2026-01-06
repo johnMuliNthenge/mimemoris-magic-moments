@@ -27,11 +27,21 @@ interface PayPalConfig {
 
 export function AdminPayPalSetup() {
   const { toast } = useToast();
-  const [config, setConfig] = useState<PayPalConfig>({
-    isConfigured: false,
-    clientId: '',
-    mode: 'sandbox',
-  });
+  
+  // Load saved config from localStorage
+  const loadConfig = (): PayPalConfig => {
+    const saved = localStorage.getItem('paypal_config');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      isConfigured: false,
+      clientId: '',
+      mode: 'sandbox',
+    };
+  };
+
+  const [config, setConfig] = useState<PayPalConfig>(loadConfig);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [mode, setMode] = useState<'sandbox' | 'live'>('sandbox');
@@ -51,15 +61,18 @@ export function AdminPayPalSetup() {
     setLoading(true);
 
     try {
-      // Save to database or secrets
-      // For now, we'll simulate the save process
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      setConfig({
+      const newConfig: PayPalConfig = {
         isConfigured: true,
         clientId: clientId,
         mode: mode,
-      });
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('paypal_config', JSON.stringify(newConfig));
+      setConfig(newConfig);
 
       toast({
         title: 'PayPal Configured',
@@ -80,11 +93,13 @@ export function AdminPayPalSetup() {
   };
 
   const handleDisconnect = () => {
-    setConfig({
+    const newConfig: PayPalConfig = {
       isConfigured: false,
       clientId: '',
       mode: 'sandbox',
-    });
+    };
+    localStorage.setItem('paypal_config', JSON.stringify(newConfig));
+    setConfig(newConfig);
     toast({
       title: 'PayPal Disconnected',
       description: 'PayPal integration has been removed',
