@@ -674,6 +674,14 @@ export type Database = {
         Args: { _friend_id: string; _user_id: string }
         Returns: boolean
       }
+      is_group_admin: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       search_users_for_discovery: {
         Args: { page_num?: number; page_size?: number; search_term?: string }
         Returns: {
