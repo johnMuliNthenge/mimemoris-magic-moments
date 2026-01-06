@@ -1,101 +1,98 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, CreditCard, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useStripeSubscription } from '@/hooks/useStripeSubscription';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-
-const tierColors = {
-  basic: 'border-muted-foreground',
-  standard: 'border-primary',
-  premium: 'border-collab gradient-collab',
-};
-
-const tierBg = {
-  basic: 'bg-card',
-  standard: 'bg-card',
-  premium: 'gradient-collab text-collab-foreground',
-};
+import { STRIPE_TIERS, StripeTier } from '@/lib/stripe-config';
 
 export default function SubscriptionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { subscription, plans, loading, refetch } = useSubscription();
+  const { plans, loading: plansLoading } = useSubscription();
+  const { 
+    stripeSubscription, 
+    loading: stripeLoading, 
+    createCheckout, 
+    openCustomerPortal,
+    checkSubscription 
+  } = useStripeSubscription();
   const { toast } = useToast();
+  const [processingTier, setProcessingTier] = useState<string | null>(null);
 
-  const selectPlan = async (planId: string) => {
-    if (!user) return;
+  // Handle success/cancel redirects from Stripe
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      toast({
+        title: 'Payment Successful!',
+        description: 'Your subscription has been activated.',
+      });
+      checkSubscription();
+      navigate('/subscription', { replace: true });
+    } else if (searchParams.get('canceled') === 'true') {
+      toast({
+        variant: 'destructive',
+        title: 'Payment Canceled',
+        description: 'You can try again when ready.',
+      });
+      navigate('/subscription', { replace: true });
+    }
+  }, [searchParams, toast, navigate, checkSubscription]);
+
+  const handleSelectPlan = async (tier: StripeTier) => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Required',
+        description: 'Please log in to subscribe.',
+      });
+      return;
+    }
 
     try {
-      const selectedPlan = plans.find(p => p.id === planId);
-      const currentPlan = subscription?.plan;
+      setProcessingTier(tier);
+      const priceId = STRIPE_TIERS[tier].price_id;
+      const url = await createCheckout(priceId);
       
-      if (subscription) {
-        // Update existing subscription
-        await supabase
-          .from('user_subscriptions')
-          .update({ plan_id: planId })
-          .eq('id', subscription.id);
-
-        // Determine if upgrade or downgrade
-        const planTiers = { basic: 1, standard: 2, premium: 3 };
-        const currentTier = currentPlan?.tier ? planTiers[currentPlan.tier as keyof typeof planTiers] : 0;
-        const newTier = selectedPlan?.tier ? planTiers[selectedPlan.tier as keyof typeof planTiers] : 0;
-        const type = newTier > currentTier ? 'upgrade' : 'downgrade';
-
-        // Send notification
-        await supabase.functions.invoke('subscription-notification', {
-          body: {
-            userId: user.id,
-            userEmail: user.email,
-            newPlanName: selectedPlan?.name || 'Unknown',
-            previousPlanName: currentPlan?.name,
-            type
-          }
-        });
-      } else {
-        // Create new subscription
-        await supabase.from('user_subscriptions').insert({
-          user_id: user.id,
-          plan_id: planId,
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        });
-
-        // Send welcome notification
-        await supabase.functions.invoke('subscription-notification', {
-          body: {
-            userId: user.id,
-            userEmail: user.email,
-            newPlanName: selectedPlan?.name || 'Unknown',
-            type: 'new'
-          }
-        });
+      if (url) {
+        window.open(url, '_blank');
       }
-
-      toast({
-        title: 'Plan Updated!',
-        description: 'Your subscription has been updated successfully.',
-      });
-
-      refetch();
-      navigate('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to start checkout',
+      });
+    } finally {
+      setProcessingTier(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const url = await openCustomerPortal();
+      if (url) {
+        window.open(url, '_blank');
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to open billing portal',
       });
     }
   };
 
-  if (loading) {
+  if (plansLoading || stripeLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-16">
@@ -119,10 +116,30 @@ export default function SubscriptionPage() {
           </p>
         </motion.div>
 
+        {stripeSubscription?.subscribed && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center"
+          >
+            <Button
+              variant="outline"
+              onClick={handleManageSubscription}
+              className="gap-2"
+            >
+              <CreditCard className="w-4 h-4" />
+              Manage Subscription
+              <ExternalLink className="w-3 h-3" />
+            </Button>
+          </motion.div>
+        )}
+
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan, index) => {
-            const isCurrentPlan = subscription?.plan_id === plan.id;
+            const tier = plan.tier as StripeTier;
+            const isCurrentPlan = stripeSubscription?.tier === tier;
             const isPremium = plan.tier === 'premium';
+            const isProcessing = processingTier === tier;
 
             return (
               <motion.div
@@ -176,10 +193,21 @@ export default function SubscriptionPage() {
                         isCurrentPlan ? "bg-muted text-muted-foreground" : ""
                       )}
                       variant={isPremium ? "default" : "outline"}
-                      disabled={isCurrentPlan}
-                      onClick={() => selectPlan(plan.id)}
+                      disabled={isCurrentPlan || isProcessing}
+                      onClick={() => handleSelectPlan(tier)}
                     >
-                      {isCurrentPlan ? 'Current Plan' : 'Select Plan'}
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : isCurrentPlan ? (
+                        'Current Plan'
+                      ) : stripeSubscription?.subscribed ? (
+                        'Change Plan'
+                      ) : (
+                        'Subscribe Now'
+                      )}
                     </Button>
                   </CardContent>
                 </Card>
@@ -188,7 +216,7 @@ export default function SubscriptionPage() {
           })}
         </div>
 
-        {subscription && (
+        {stripeSubscription?.subscribed && stripeSubscription.subscription_end && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -197,10 +225,7 @@ export default function SubscriptionPage() {
           >
             <p>
               Your current billing period ends on{' '}
-              {subscription.current_period_end 
-                ? new Date(subscription.current_period_end).toLocaleDateString()
-                : 'N/A'
-              }
+              {new Date(stripeSubscription.subscription_end).toLocaleDateString()}
             </p>
           </motion.div>
         )}
