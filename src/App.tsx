@@ -23,8 +23,12 @@ import Collaborate from "./pages/Collaborate";
 import Subscription from "./pages/Subscription";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import AdminUsers from "./pages/AdminUsers";
+import AdminPlans from "./pages/AdminPlans";
+import AdminSettings from "./pages/AdminSettings";
 import Social from "./pages/Social";
 import UserProfile from "./pages/UserProfile";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -48,6 +52,9 @@ const App = () => (
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/plans" element={<ProtectedRoute requireAdmin><AdminPlans /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute requireAdmin><AdminSettings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

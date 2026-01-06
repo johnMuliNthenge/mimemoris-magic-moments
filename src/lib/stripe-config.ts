@@ -3,16 +3,22 @@
 
 export const STRIPE_TIERS = {
   basic: {
+    name: "Basic Plan",
     product_id: "prod_TjwInmR333067C",
     price_id: "price_1SmSQKKhPSFOc2Ir29CLhdUP",
+    price: 4.99,
   },
   standard: {
+    name: "Standard Plan",
     product_id: "prod_TjwJlD5ClW1D0C",
     price_id: "price_1SmSQTKhPSFOc2IrZweSkWJI",
+    price: 9.99,
   },
   premium: {
+    name: "Premium Plan",
     product_id: "prod_TjwJvL09GzBsOL",
     price_id: "price_1SmSQdKhPSFOc2IrMTdF6OHk",
+    price: 19.99,
   },
 } as const;
 
