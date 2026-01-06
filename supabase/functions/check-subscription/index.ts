@@ -77,12 +77,19 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      
+      // Safely handle the subscription end date
+      if (subscription.current_period_end && typeof subscription.current_period_end === 'number') {
+        const endDate = new Date(subscription.current_period_end * 1000);
+        if (!isNaN(endDate.getTime())) {
+          subscriptionEnd = endDate.toISOString();
+        }
+      }
       logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       
-      productId = subscription.items.data[0].price.product as string;
-      priceId = subscription.items.data[0].price.id;
-      tier = PRODUCT_TIER_MAP[productId] || null;
+      productId = subscription.items.data[0]?.price?.product as string || null;
+      priceId = subscription.items.data[0]?.price?.id || null;
+      tier = productId ? (PRODUCT_TIER_MAP[productId] || null) : null;
       logStep("Determined subscription tier", { productId, tier, priceId });
     } else {
       logStep("No active subscription found");
