@@ -27,11 +27,21 @@ interface MpesaConfig {
 
 export function AdminMpesaSetup() {
   const { toast } = useToast();
-  const [config, setConfig] = useState<MpesaConfig>({
-    isConfigured: false,
-    shortcode: '',
-    environment: 'sandbox',
-  });
+  
+  // Load saved config from localStorage
+  const loadConfig = (): MpesaConfig => {
+    const saved = localStorage.getItem('mpesa_config');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      isConfigured: false,
+      shortcode: '',
+      environment: 'sandbox',
+    };
+  };
+
+  const [config, setConfig] = useState<MpesaConfig>(loadConfig);
   const [consumerKey, setConsumerKey] = useState('');
   const [consumerSecret, setConsumerSecret] = useState('');
   const [shortcode, setShortcode] = useState('');
@@ -53,15 +63,18 @@ export function AdminMpesaSetup() {
     setLoading(true);
 
     try {
-      // Save to database or secrets
-      // For now, we'll simulate the save process
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      setConfig({
+      const newConfig: MpesaConfig = {
         isConfigured: true,
         shortcode: shortcode,
         environment: environment,
-      });
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('mpesa_config', JSON.stringify(newConfig));
+      setConfig(newConfig);
 
       toast({
         title: 'M-Pesa Configured',
@@ -83,11 +96,13 @@ export function AdminMpesaSetup() {
   };
 
   const handleDisconnect = () => {
-    setConfig({
+    const newConfig: MpesaConfig = {
       isConfigured: false,
       shortcode: '',
       environment: 'sandbox',
-    });
+    };
+    localStorage.setItem('mpesa_config', JSON.stringify(newConfig));
+    setConfig(newConfig);
     toast({
       title: 'M-Pesa Disconnected',
       description: 'M-Pesa integration has been removed',
