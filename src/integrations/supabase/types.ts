@@ -168,6 +168,45 @@ export type Database = {
         }
         Relationships: []
       }
+      email_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          sender_email: string
+          sender_name: string
+          smtp_host: string
+          smtp_password: string
+          smtp_port: number
+          smtp_username: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          sender_email: string
+          sender_name?: string
+          smtp_host: string
+          smtp_password: string
+          smtp_port?: number
+          smtp_username: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          sender_email?: string
+          sender_name?: string
+          smtp_host?: string
+          smtp_password?: string
+          smtp_port?: number
+          smtp_username?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       memories: {
         Row: {
           ai_analysis: Json | null
@@ -292,30 +331,39 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          country: string | null
           created_at: string
           full_name: string | null
+          gender: string | null
           id: string
           preferred_language: string | null
           updated_at: string
           user_id: string
+          whatsapp_number: string | null
         }
         Insert: {
           avatar_url?: string | null
+          country?: string | null
           created_at?: string
           full_name?: string | null
+          gender?: string | null
           id?: string
           preferred_language?: string | null
           updated_at?: string
           user_id: string
+          whatsapp_number?: string | null
         }
         Update: {
           avatar_url?: string | null
+          country?: string | null
           created_at?: string
           full_name?: string | null
+          gender?: string | null
           id?: string
           preferred_language?: string | null
           updated_at?: string
           user_id?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }

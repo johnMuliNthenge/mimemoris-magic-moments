@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { subDays, format } from 'date-fns';
 import { 
   Users, 
   BookHeart, 
@@ -16,6 +17,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminPlans } from '@/components/admin/AdminPlans';
 import { AdminStripeSetup } from '@/components/admin/AdminStripeSetup';
+import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardStats {
@@ -34,31 +36,49 @@ export default function AdminDashboard() {
     monthlyRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState({
+    start: subDays(new Date(), 30),
+    end: new Date(),
+  });
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    fetchStats(dateRange.start, dateRange.end);
+  }, [dateRange]);
 
-  const fetchStats = async () => {
+  const handleDateChange = (startDate: Date, endDate: Date) => {
+    setDateRange({ start: startDate, end: endDate });
+  };
+
+  const fetchStats = async (startDate: Date, endDate: Date) => {
+    setLoading(true);
     try {
-      // Fetch total users
+      const startStr = format(startDate, 'yyyy-MM-dd');
+      const endStr = format(endDate, 'yyyy-MM-dd');
+      
+      // Fetch users created in date range
       const { count: usersCount } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', startStr)
+        .lte('created_at', endStr + 'T23:59:59');
 
-      // Fetch total memories
+      // Fetch memories in date range
       const { count: memoriesCount } = await supabase
         .from('memories')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', startStr)
+        .lte('created_at', endStr + 'T23:59:59');
 
-      // Fetch active subscriptions with plan info
+      // Fetch active subscriptions with plan info in date range
       const { data: subscriptions } = await supabase
         .from('user_subscriptions')
         .select(`
           *,
           plan:subscription_plans(price_monthly)
         `)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .gte('created_at', startStr)
+        .lte('created_at', endStr + 'T23:59:59');
 
       const activeCount = subscriptions?.length || 0;
       const revenue = subscriptions?.reduce((sum, sub) => {
@@ -117,11 +137,14 @@ export default function AdminDashboard() {
     <AdminLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="font-display text-3xl font-bold">{t('admin_dashboard')}</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage users, subscriptions, and monitor app analytics
-          </p>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-bold">{t('admin_dashboard')}</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage users, subscriptions, and monitor app analytics
+            </p>
+          </div>
+          <DateRangeFilter onDateChange={handleDateChange} />
         </div>
 
         {/* Stats Grid */}

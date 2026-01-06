@@ -1,26 +1,96 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { BookHeart, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
+import { BookHeart, Mail, Lock, User, Loader2, Eye, EyeOff, Phone, Globe, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import { validateSafeInput } from '@/lib/security';
 
 const signUpSchema = z.object({
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  fullName: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  email: z.string().email('Please enter a valid email').max(255),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(128),
+  country: z.string().min(2, 'Please select your country'),
+  whatsappNumber: z.string().regex(/^\+?[1-9]\d{6,14}$/, 'Please enter a valid WhatsApp number'),
+  gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say'], { required_error: 'Please select your gender' }),
 });
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(1, 'Password is required'),
 });
+
+const countries = [
+  { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'IN', name: 'India' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'CN', name: 'China' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'NG', name: 'Nigeria' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'KE', name: 'Kenya' },
+  { code: 'GH', name: 'Ghana' },
+  { code: 'EG', name: 'Egypt' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'PH', name: 'Philippines' },
+  { code: 'ID', name: 'Indonesia' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'TH', name: 'Thailand' },
+  { code: 'VN', name: 'Vietnam' },
+  { code: 'PK', name: 'Pakistan' },
+  { code: 'BD', name: 'Bangladesh' },
+  { code: 'RU', name: 'Russia' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'IL', name: 'Israel' },
+  { code: 'AR', name: 'Argentina' },
+  { code: 'CO', name: 'Colombia' },
+  { code: 'CL', name: 'Chile' },
+  { code: 'PE', name: 'Peru' },
+  { code: 'NZ', name: 'New Zealand' },
+].sort((a, b) => a.name.localeCompare(b.name));
+
+const genderOptions = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+];
 
 export default function AuthPage() {
   const { t } = useTranslation();
@@ -35,12 +105,20 @@ export default function AuthPage() {
     fullName: '',
     email: '',
     password: '',
+    country: '',
+    whatsappNumber: '',
+    gender: '' as 'male' | 'female' | 'other' | 'prefer_not_to_say' | '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
   if (user) {
-    navigate('/dashboard');
     return null;
   }
 
@@ -55,9 +133,17 @@ export default function AuthPage() {
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach((err) => {
-            fieldErrors[err.path[0]] = err.message;
+            fieldErrors[err.path[0] as string] = err.message;
           });
           setErrors(fieldErrors);
+          setLoading(false);
+          return;
+        }
+
+        // Validate for XSS/SQL injection
+        const emailValidation = validateSafeInput(formData.email, 255);
+        if (!emailValidation.isValid) {
+          setErrors({ email: emailValidation.error || 'Invalid input' });
           setLoading(false);
           return;
         }
@@ -91,9 +177,24 @@ export default function AuthPage() {
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach((err) => {
-            fieldErrors[err.path[0]] = err.message;
+            fieldErrors[err.path[0] as string] = err.message;
           });
           setErrors(fieldErrors);
+          setLoading(false);
+          return;
+        }
+
+        // Validate all inputs for XSS/SQL injection
+        const nameValidation = validateSafeInput(formData.fullName, 100);
+        const emailValidation = validateSafeInput(formData.email, 255);
+        const phoneValidation = validateSafeInput(formData.whatsappNumber, 20);
+        
+        if (!nameValidation.isValid || !emailValidation.isValid || !phoneValidation.isValid) {
+          toast({
+            variant: 'destructive',
+            title: 'Invalid Input',
+            description: 'Please check your inputs for special characters',
+          });
           setLoading(false);
           return;
         }
@@ -116,6 +217,19 @@ export default function AuthPage() {
           }
           setLoading(false);
           return;
+        }
+
+        // Update profile with additional fields
+        const { data: { user: newUser } } = await supabase.auth.getUser();
+        if (newUser) {
+          await supabase
+            .from('profiles')
+            .update({
+              country: formData.country,
+              whatsapp_number: formData.whatsappNumber,
+              gender: formData.gender,
+            })
+            .eq('user_id', newUser.id);
         }
 
         toast({
@@ -172,7 +286,7 @@ export default function AuthPage() {
       </div>
 
       {/* Right Panel - Auth Form */}
-      <div className="lg:w-1/2 p-8 lg:p-16 flex items-center justify-center">
+      <div className="lg:w-1/2 p-8 lg:p-16 flex items-center justify-center overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -191,20 +305,86 @@ export default function AuthPage() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">{t('full_name')}</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="fullName"
-                        placeholder="John Doe"
-                        className="pl-10"
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      />
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">{t('full_name')}</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="fullName"
+                          placeholder="John Doe"
+                          className="pl-10"
+                          value={formData.fullName}
+                          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                          maxLength={100}
+                        />
+                      </div>
+                      {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
                     </div>
-                    {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
-                  </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="country">Country</Label>
+                        <Select 
+                          value={formData.country} 
+                          onValueChange={(value) => setFormData({ ...formData, country: value })}
+                        >
+                          <SelectTrigger>
+                            <Globe className="w-4 h-4 mr-2 text-muted-foreground" />
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {countries.map((country) => (
+                              <SelectItem key={country.code} value={country.code}>
+                                {country.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.country && <p className="text-sm text-destructive">{errors.country}</p>}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="gender">Gender</Label>
+                        <Select 
+                          value={formData.gender} 
+                          onValueChange={(value: 'male' | 'female' | 'other' | 'prefer_not_to_say') => 
+                            setFormData({ ...formData, gender: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <Users className="w-4 h-4 mr-2 text-muted-foreground" />
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {genderOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.gender && <p className="text-sm text-destructive">{errors.gender}</p>}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="whatsappNumber"
+                          type="tel"
+                          placeholder="+1234567890"
+                          className="pl-10"
+                          value={formData.whatsappNumber}
+                          onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+                          maxLength={20}
+                        />
+                      </div>
+                      {errors.whatsappNumber && <p className="text-sm text-destructive">{errors.whatsappNumber}</p>}
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2">
@@ -218,6 +398,7 @@ export default function AuthPage() {
                       className="pl-10"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      maxLength={255}
                     />
                   </div>
                   {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
@@ -234,6 +415,7 @@ export default function AuthPage() {
                       className="pl-10 pr-10"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      maxLength={128}
                     />
                     <button
                       type="button"

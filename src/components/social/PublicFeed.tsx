@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
@@ -6,7 +6,6 @@ import {
   Heart, 
   MessageCircle, 
   Share2, 
-  Play,
   Loader2,
   Globe,
   Send
@@ -25,18 +24,41 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePublicFeed } from '@/hooks/usePublicFeed';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { CreatePost } from './CreatePost';
+import { MediaPlayer } from './MediaPlayer';
+import { validateSafeInput } from '@/lib/security';
 
 export function PublicFeed() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { memories, loading, toggleLike, getComments, addComment } = usePublicFeed();
+  const { memories, loading, toggleLike, getComments, addComment, refetch } = usePublicFeed();
   
   const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [userProfile, setUserProfile] = useState<{ full_name?: string; avatar_url?: string } | undefined>();
+
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url')
+      .eq('user_id', user.id)
+      .single();
+    if (data) {
+      setUserProfile(data);
+    }
+  };
 
   const openComments = async (memoryId: string) => {
     setSelectedMemory(memoryId);
@@ -48,9 +70,16 @@ export function PublicFeed() {
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !selectedMemory) return;
+    
+    // Validate comment for security
+    const validation = validateSafeInput(newComment, 1000);
+    if (!validation.isValid) {
+      return;
+    }
+    
     setSubmittingComment(true);
     
-    await addComment(selectedMemory, newComment.trim());
+    await addComment(selectedMemory, validation.sanitized);
     const updatedComments = await getComments(selectedMemory);
     setComments(updatedComments);
     setNewComment('');
@@ -83,113 +112,119 @@ export function PublicFeed() {
     );
   }
 
-  if (memories.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <Globe className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-        <h3 className="text-xl font-semibold mb-2">No Public Memories</h3>
-        <p className="text-muted-foreground">
-          Be the first to share a memory with the community!
-        </p>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="space-y-6">
-        {memories.map((memory, index) => (
-          <motion.div
-            key={memory.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card className="border-border overflow-hidden">
-              <CardHeader className="flex flex-row items-center gap-3 pb-3">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={memory.user_profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {memory.user_profile?.full_name?.[0] || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-medium">{memory.user_profile?.full_name || 'Anonymous'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
-                  </p>
-                </div>
-                {memory.mood && (
-                  <span className="text-2xl">{memory.mood}</span>
-                )}
-              </CardHeader>
-              
-              <CardContent className="pb-3">
-                {memory.title && (
-                  <h4 className="font-semibold mb-2">{memory.title}</h4>
-                )}
-                
-                {memory.content && (
-                  <p className="text-muted-foreground mb-3">{memory.content}</p>
-                )}
+        {/* Create Post */}
+        {user && (
+          <CreatePost onPostCreated={refetch} userProfile={userProfile} />
+        )}
 
-                {memory.media_url && (
-                  <div className="rounded-lg overflow-hidden">
-                    {memory.memory_type === 'photo' && (
-                      <img 
-                        src={memory.media_url} 
-                        alt={memory.title || 'Memory'} 
-                        className="w-full max-h-96 object-cover"
-                      />
-                    )}
-                    {memory.memory_type === 'video' && (
-                      <video 
-                        src={memory.media_url} 
-                        controls 
-                        className="w-full max-h-96"
-                      />
-                    )}
-                    {memory.memory_type === 'audio' && (
-                      <audio src={memory.media_url} controls className="w-full" />
-                    )}
+        {memories.length === 0 ? (
+          <div className="text-center py-16">
+            <Globe className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+            <h3 className="text-xl font-semibold mb-2">No Public Memories</h3>
+            <p className="text-muted-foreground">
+              Be the first to share a memory with the community!
+            </p>
+          </div>
+        ) : (
+          memories.map((memory, index) => (
+            <motion.div
+              key={memory.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <Card className="border-border overflow-hidden">
+                <CardHeader className="flex flex-row items-center gap-3 pb-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={memory.user_profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {memory.user_profile?.full_name?.[0] || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-medium">{memory.user_profile?.full_name || 'Anonymous'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
+                    </p>
                   </div>
-                )}
-              </CardContent>
+                  {memory.mood && (
+                    <span className="text-2xl">{memory.mood}</span>
+                  )}
+                </CardHeader>
+                
+                <CardContent className="pb-3">
+                  {memory.title && (
+                    <h4 className="font-semibold mb-2">{memory.title}</h4>
+                  )}
+                  
+                  {memory.content && (
+                    <p className="text-muted-foreground mb-3">{memory.content}</p>
+                  )}
 
-              <CardFooter className="border-t border-border pt-3">
-                <div className="flex items-center gap-4 w-full">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={cn(
-                      "gap-2",
-                      memory.is_liked && "text-destructive"
-                    )}
-                    onClick={() => handleLike(memory.id)}
-                    disabled={!user}
-                  >
-                    <Heart className={cn("w-5 h-5", memory.is_liked && "fill-current")} />
-                    {memory.likes_count}
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="gap-2"
-                    onClick={() => openComments(memory.id)}
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    {memory.comments_count}
-                  </Button>
-                  
-                  <Button variant="ghost" size="sm" className="gap-2 ml-auto">
-                    <Share2 className="w-5 h-5" />
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          </motion.div>
-        ))}
+                  {memory.media_url && (
+                    <div className="rounded-lg overflow-hidden">
+                      {memory.memory_type === 'photo' && (
+                        <img 
+                          src={memory.media_url} 
+                          alt={memory.title || 'Memory'} 
+                          className="w-full max-h-96 object-cover"
+                        />
+                      )}
+                      {memory.memory_type === 'video' && (
+                        <MediaPlayer 
+                          src={memory.media_url} 
+                          type="video" 
+                          className="max-h-96"
+                        />
+                      )}
+                      {memory.memory_type === 'audio' && (
+                        <MediaPlayer 
+                          src={memory.media_url} 
+                          type="audio"
+                        />
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+
+                <CardFooter className="border-t border-border pt-3">
+                  <div className="flex items-center gap-4 w-full">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className={cn(
+                        "gap-2",
+                        memory.is_liked && "text-destructive"
+                      )}
+                      onClick={() => handleLike(memory.id)}
+                      disabled={!user}
+                    >
+                      <Heart className={cn("w-5 h-5", memory.is_liked && "fill-current")} />
+                      {memory.likes_count}
+                    </Button>
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="gap-2"
+                      onClick={() => openComments(memory.id)}
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      {memory.comments_count}
+                    </Button>
+                    
+                    <Button variant="ghost" size="sm" className="gap-2 ml-auto">
+                      <Share2 className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          ))
+        )}
       </div>
 
       {/* Comments Dialog */}
@@ -244,6 +279,7 @@ export function PublicFeed() {
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
                 disabled={submittingComment}
+                maxLength={1000}
               />
               <Button onClick={handleAddComment} disabled={submittingComment || !newComment.trim()}>
                 {submittingComment ? (
