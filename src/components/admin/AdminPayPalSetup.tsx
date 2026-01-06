@@ -73,6 +73,9 @@ export function AdminPayPalSetup() {
       // Save to localStorage
       localStorage.setItem('paypal_config', JSON.stringify(newConfig));
       setConfig(newConfig);
+      
+      // Dispatch custom event for same-tab listeners
+      window.dispatchEvent(new Event('paymentConfigUpdated'));
 
       toast({
         title: 'PayPal Configured',
@@ -100,6 +103,10 @@ export function AdminPayPalSetup() {
     };
     localStorage.setItem('paypal_config', JSON.stringify(newConfig));
     setConfig(newConfig);
+    
+    // Dispatch custom event for same-tab listeners
+    window.dispatchEvent(new Event('paymentConfigUpdated'));
+    
     toast({
       title: 'PayPal Disconnected',
       description: 'PayPal integration has been removed',
