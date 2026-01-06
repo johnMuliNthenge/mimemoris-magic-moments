@@ -11,6 +11,8 @@ interface SubscriptionPlan {
   languages_limited: boolean;
   features: string[];
   is_active: boolean;
+  stripe_price_id?: string;
+  stripe_product_id?: string;
 }
 
 interface UserSubscription {

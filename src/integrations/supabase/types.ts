@@ -377,6 +377,8 @@ export type Database = {
           languages_limited: boolean | null
           name: string
           price_monthly: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
           updated_at: string
         }
@@ -389,6 +391,8 @@ export type Database = {
           languages_limited?: boolean | null
           name: string
           price_monthly: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
         }
@@ -401,6 +405,8 @@ export type Database = {
           languages_limited?: boolean | null
           name?: string
           price_monthly?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
         }
