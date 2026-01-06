@@ -11,7 +11,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useStripeSubscription } from '@/hooks/useStripeSubscription';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { STRIPE_TIERS, StripeTier } from '@/lib/stripe-config';
+import { StripeTier } from '@/lib/stripe-config';
 
 export default function SubscriptionPage() {
   const { t } = useTranslation();
@@ -48,7 +48,7 @@ export default function SubscriptionPage() {
     }
   }, [searchParams, toast, navigate, checkSubscription]);
 
-  const handleSelectPlan = async (tier: StripeTier) => {
+  const handleSelectPlan = async (tier: StripeTier, stripePriceId?: string) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -58,10 +58,18 @@ export default function SubscriptionPage() {
       return;
     }
 
+    if (!stripePriceId) {
+      toast({
+        variant: 'destructive',
+        title: 'Configuration Error',
+        description: 'This plan is not properly configured for payments.',
+      });
+      return;
+    }
+
     try {
       setProcessingTier(tier);
-      const priceId = STRIPE_TIERS[tier].price_id;
-      const url = await createCheckout(priceId);
+      const url = await createCheckout(stripePriceId);
       
       if (url) {
         window.open(url, '_blank');
@@ -193,8 +201,8 @@ export default function SubscriptionPage() {
                         isCurrentPlan ? "bg-muted text-muted-foreground" : ""
                       )}
                       variant={isPremium ? "default" : "outline"}
-                      disabled={isCurrentPlan || isProcessing}
-                      onClick={() => handleSelectPlan(tier)}
+                      disabled={isCurrentPlan || isProcessing || !plan.stripe_price_id}
+                      onClick={() => handleSelectPlan(tier, plan.stripe_price_id)}
                     >
                       {isProcessing ? (
                         <>

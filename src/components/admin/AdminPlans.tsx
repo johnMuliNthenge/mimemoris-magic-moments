@@ -39,6 +39,8 @@ interface SubscriptionPlan {
   features: string[];
   is_active: boolean;
   subscriber_count?: number;
+  stripe_price_id?: string;
+  stripe_product_id?: string;
 }
 
 export function AdminPlans() {
@@ -47,6 +49,7 @@ export function AdminPlans() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
+  const [originalPrice, setOriginalPrice] = useState<number | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -92,6 +95,7 @@ export function AdminPlans() {
 
   const openEditDialog = (plan: SubscriptionPlan) => {
     setEditingPlan({ ...plan });
+    setOriginalPrice(plan.price_monthly);
     setShowEditDialog(true);
   };
 
@@ -100,19 +104,40 @@ export function AdminPlans() {
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('subscription_plans')
-        .update({
-          name: editingPlan.name,
-          price_monthly: editingPlan.price_monthly,
-          daily_memory_limit: editingPlan.daily_memory_limit,
-          languages_limited: editingPlan.languages_limited,
-          features: editingPlan.features,
-          is_active: editingPlan.is_active,
-        })
-        .eq('id', editingPlan.id);
+      const priceChanged = originalPrice !== editingPlan.price_monthly;
 
-      if (error) throw error;
+      // If price changed, update Stripe first
+      if (priceChanged) {
+        const { data, error: stripeError } = await supabase.functions.invoke('update-stripe-price', {
+          body: {
+            planId: editingPlan.id,
+            newPrice: editingPlan.price_monthly,
+            tier: editingPlan.tier,
+          },
+        });
+
+        if (stripeError) throw new Error(stripeError.message);
+        if (data?.error) throw new Error(data.error);
+
+        toast({
+          title: 'Stripe Price Updated',
+          description: 'New price has been synced with Stripe.',
+        });
+      } else {
+        // Only update non-price fields in database
+        const { error } = await supabase
+          .from('subscription_plans')
+          .update({
+            name: editingPlan.name,
+            daily_memory_limit: editingPlan.daily_memory_limit,
+            languages_limited: editingPlan.languages_limited,
+            features: editingPlan.features,
+            is_active: editingPlan.is_active,
+          })
+          .eq('id', editingPlan.id);
+
+        if (error) throw error;
+      }
 
       toast({
         title: 'Plan Updated',
