@@ -47,7 +47,8 @@ export default function MemoriesListPage() {
   };
 
   const handleMemoryClick = (memory: Memory) => {
-    navigate(`/memories/${memory.id}/edit`);
+    // No edit page yet - just log for now
+    console.log('Memory clicked:', memory.id);
   };
 
   const handleBack = () => {
