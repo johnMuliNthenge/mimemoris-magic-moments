@@ -467,6 +467,98 @@ export type Database = {
           },
         ]
       }
+      mpesa_config: {
+        Row: {
+          consumer_key: string
+          consumer_secret: string
+          created_at: string
+          environment: string
+          id: string
+          is_active: boolean | null
+          passkey: string
+          shortcode: string
+          updated_at: string
+        }
+        Insert: {
+          consumer_key: string
+          consumer_secret: string
+          created_at?: string
+          environment?: string
+          id?: string
+          is_active?: boolean | null
+          passkey: string
+          shortcode: string
+          updated_at?: string
+        }
+        Update: {
+          consumer_key?: string
+          consumer_secret?: string
+          created_at?: string
+          environment?: string
+          id?: string
+          is_active?: boolean | null
+          passkey?: string
+          shortcode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mpesa_transactions: {
+        Row: {
+          amount: number
+          checkout_request_id: string | null
+          created_at: string
+          id: string
+          merchant_request_id: string | null
+          mpesa_receipt_number: string | null
+          phone_number: string
+          plan_id: string
+          result_code: string | null
+          result_desc: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          phone_number: string
+          plan_id: string
+          result_code?: string | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          checkout_request_id?: string | null
+          created_at?: string
+          id?: string
+          merchant_request_id?: string | null
+          mpesa_receipt_number?: string | null
+          phone_number?: string
+          plan_id?: string
+          result_code?: string | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mpesa_transactions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
