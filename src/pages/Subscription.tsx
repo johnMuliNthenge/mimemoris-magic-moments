@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Check, Loader2, CreditCard, ExternalLink } from 'lucide-react';
+import { Check, Loader2, CreditCard, ExternalLink, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription, SubscriptionPlan } from '@/hooks/useSubscription';
@@ -14,13 +17,14 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { StripeTier } from '@/lib/stripe-config';
 import { PaymentMethodDialog } from '@/components/subscription/PaymentMethodDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SubscriptionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { plans, loading: plansLoading } = useSubscription();
+  const { plans, loading: plansLoading, refetch: refetchSubscription } = useSubscription();
   const { 
     stripeSubscription, 
     loading: stripeLoading, 
@@ -34,38 +38,114 @@ export default function SubscriptionPage() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
 
+  // M-Pesa state
+  const [showMpesaDialog, setShowMpesaDialog] = useState(false);
+  const [mpesaPhone, setMpesaPhone] = useState('');
+  const [mpesaLoading, setMpesaLoading] = useState(false);
+  const [mpesaPolling, setMpesaPolling] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
   // Handle success/cancel redirects from Stripe
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
-      toast({
-        title: 'Payment Successful!',
-        description: 'Your subscription has been activated.',
-      });
+      toast({ title: 'Payment Successful!', description: 'Your subscription has been activated.' });
       checkSubscription();
       navigate('/subscription', { replace: true });
     } else if (searchParams.get('canceled') === 'true') {
-      toast({
-        variant: 'destructive',
-        title: 'Payment Canceled',
-        description: 'You can try again when ready.',
-      });
+      toast({ variant: 'destructive', title: 'Payment Canceled', description: 'You can try again when ready.' });
       navigate('/subscription', { replace: true });
     }
   }, [searchParams, toast, navigate, checkSubscription]);
 
   const handleOpenPaymentDialog = (plan: SubscriptionPlan) => {
     if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Login Required',
-        description: 'Please log in to subscribe.',
-      });
+      toast({ variant: 'destructive', title: 'Login Required', description: 'Please log in to subscribe.' });
       return;
     }
-    // Refresh payment methods config before showing dialog
     refetchPaymentMethods();
     setSelectedPlan(plan);
     setShowPaymentDialog(true);
+  };
+
+  const handleMpesaPayment = async () => {
+    if (!selectedPlan || !mpesaPhone || !user) return;
+
+    const phoneClean = mpesaPhone.replace(/\s+/g, '');
+    if (phoneClean.length < 9) {
+      toast({ variant: 'destructive', title: 'Invalid Phone', description: 'Please enter a valid M-Pesa phone number.' });
+      return;
+    }
+
+    setMpesaLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mpesa-stk-push', {
+        body: {
+          phone_number: phoneClean,
+          plan_id: selectedPlan.id,
+          amount: selectedPlan.price_monthly,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: 'Check Your Phone 📱',
+        description: 'An M-Pesa payment prompt has been sent to your phone. Enter your PIN to complete.',
+      });
+
+      // Start polling for payment status
+      const checkoutRequestId = data.checkout_request_id;
+      setMpesaPolling(true);
+      setMpesaLoading(false);
+
+      let attempts = 0;
+      pollingRef.current = setInterval(async () => {
+        attempts++;
+        try {
+          const { data: statusData } = await supabase.functions.invoke('mpesa-check-status', {
+            body: { checkout_request_id: checkoutRequestId },
+          });
+
+          if (statusData?.status === 'completed') {
+            clearInterval(pollingRef.current!);
+            pollingRef.current = null;
+            setMpesaPolling(false);
+            setShowMpesaDialog(false);
+            setMpesaPhone('');
+            toast({ title: '🎉 Payment Successful!', description: 'Your subscription has been activated.' });
+            refetchSubscription();
+            checkSubscription();
+          } else if (statusData?.status === 'failed') {
+            clearInterval(pollingRef.current!);
+            pollingRef.current = null;
+            setMpesaPolling(false);
+            toast({
+              variant: 'destructive',
+              title: 'Payment Failed',
+              description: statusData.result_desc || 'M-Pesa payment was not completed.',
+            });
+          }
+        } catch { /* keep polling */ }
+
+        if (attempts >= 30) {
+          clearInterval(pollingRef.current!);
+          pollingRef.current = null;
+          setMpesaPolling(false);
+          toast({ title: 'Timeout', description: 'Payment status check timed out. If you completed the payment, your subscription will activate shortly.' });
+        }
+      }, 5000);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'M-Pesa Error', description: error.message || 'Failed to initiate M-Pesa payment.' });
+      setMpesaLoading(false);
+    }
   };
 
   const handlePaymentMethodSelect = async (method: 'stripe' | 'paypal' | 'mpesa') => {
@@ -73,59 +153,24 @@ export default function SubscriptionPage() {
 
     if (method === 'stripe') {
       if (!selectedPlan.stripe_price_id) {
-        toast({
-          variant: 'destructive',
-          title: 'Configuration Error',
-          description: 'Stripe is not properly configured for this plan.',
-        });
+        toast({ variant: 'destructive', title: 'Configuration Error', description: 'Stripe is not properly configured for this plan.' });
         return;
       }
-
       try {
         setProcessingMethod('stripe');
         const url = await createCheckout(selectedPlan.stripe_price_id);
-        
-        if (url) {
-          window.open(url, '_blank');
-        }
+        if (url) window.open(url, '_blank');
         setShowPaymentDialog(false);
       } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error.message || 'Failed to start checkout',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to start checkout' });
       } finally {
         setProcessingMethod(null);
       }
     } else if (method === 'paypal') {
-      if (!configuredMethods.paypal) {
-        toast({
-          variant: 'destructive',
-          title: 'Not Available',
-          description: 'PayPal payment is not configured. Please contact support.',
-        });
-        return;
-      }
-      
-      toast({
-        title: 'PayPal',
-        description: 'PayPal checkout coming soon. Please use another payment method.',
-      });
+      toast({ title: 'PayPal', description: 'PayPal checkout coming soon. Please use another payment method.' });
     } else if (method === 'mpesa') {
-      if (!configuredMethods.mpesa) {
-        toast({
-          variant: 'destructive',
-          title: 'Not Available',
-          description: 'M-Pesa payment is not configured. Please contact support.',
-        });
-        return;
-      }
-      
-      toast({
-        title: 'M-Pesa',
-        description: 'M-Pesa checkout coming soon. Please use another payment method.',
-      });
+      setShowPaymentDialog(false);
+      setShowMpesaDialog(true);
     }
   };
 
@@ -288,6 +333,82 @@ export default function SubscriptionPage() {
             configuredMethods={configuredMethods}
           />
         )}
+
+        {/* M-Pesa Phone Number Dialog */}
+        <Dialog open={showMpesaDialog} onOpenChange={(open) => {
+          if (!mpesaPolling) setShowMpesaDialog(open);
+        }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-[#4CAF50]" />
+                M-Pesa Payment
+              </DialogTitle>
+              <DialogDescription>
+                {selectedPlan && (
+                  <>Subscribe to <span className="font-semibold text-foreground">{selectedPlan.name}</span> for <span className="font-semibold text-foreground">KES {selectedPlan.price_monthly}/month</span></>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="mpesa-phone">M-Pesa Phone Number</Label>
+                <Input
+                  id="mpesa-phone"
+                  placeholder="e.g., 0712345678 or 254712345678"
+                  value={mpesaPhone}
+                  onChange={(e) => setMpesaPhone(e.target.value)}
+                  disabled={mpesaLoading || mpesaPolling}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter the Safaricom number registered with M-Pesa
+                </p>
+              </div>
+
+              {mpesaPolling && (
+                <div className="flex items-center gap-3 p-4 bg-[#4CAF50]/10 rounded-lg">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#4CAF50]" />
+                  <div>
+                    <p className="text-sm font-medium">Waiting for payment confirmation...</p>
+                    <p className="text-xs text-muted-foreground">Check your phone and enter your M-Pesa PIN</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  if (pollingRef.current) {
+                    clearInterval(pollingRef.current);
+                    pollingRef.current = null;
+                  }
+                  setMpesaPolling(false);
+                  setShowMpesaDialog(false);
+                  setMpesaPhone('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-[#4CAF50] hover:bg-[#43A047] text-white"
+                onClick={handleMpesaPayment}
+                disabled={mpesaLoading || mpesaPolling || !mpesaPhone}
+              >
+                {mpesaLoading ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending...</>
+                ) : mpesaPolling ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Confirming...</>
+                ) : (
+                  'Pay with M-Pesa'
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
