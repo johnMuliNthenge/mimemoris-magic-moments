@@ -61,7 +61,8 @@ export default function MemoriesPage() {
   });
 
   const handleMemoryClick = (memory: Memory) => {
-    navigate(`/memories/${memory.id}/edit`);
+    // Navigate to list view filtered to this memory's date
+    navigate(`/memories/list?view=list&date=${memory.memory_date}`);
   };
 
   return (
