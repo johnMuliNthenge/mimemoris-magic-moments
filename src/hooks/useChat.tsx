@@ -175,10 +175,6 @@ export function useChat(selectedUserId?: string) {
       .select()
       .single();
 
-    if (!error && data) {
-      setMessages(prev => [...prev, data as Message]);
-    }
-
     return { error, data };
   };
 
