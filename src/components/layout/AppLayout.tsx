@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useFriends } from '@/hooks/useFriends';
 import { cn } from '@/lib/utils';
+import { FloatingHelpButton } from '@/components/layout/FloatingHelpButton';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -222,6 +223,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           {children}
         </div>
       </main>
+
+      {/* Floating Help Button */}
+      <FloatingHelpButton />
     </div>
   );
 }

@@ -3,8 +3,9 @@ import { AdminStripeSetup } from '@/components/admin/AdminStripeSetup';
 import { AdminPayPalSetup } from '@/components/admin/AdminPayPalSetup';
 import { AdminMpesaSetup } from '@/components/admin/AdminMpesaSetup';
 import { AdminEmailSetup } from '@/components/admin/AdminEmailSetup';
+import { AdminHelpdeskSetup } from '@/components/admin/AdminHelpdeskSetup';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Mail, Wallet, Smartphone } from 'lucide-react';
+import { CreditCard, Mail, Wallet, Smartphone, MessageCircle } from 'lucide-react';
 
 export default function AdminSettings() {
   return (
@@ -35,6 +36,10 @@ export default function AdminSettings() {
               <Mail className="w-4 h-4" />
               Email
             </TabsTrigger>
+            <TabsTrigger value="helpdesk" className="gap-2">
+              <MessageCircle className="w-4 h-4" />
+              Help Desk
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="payments">
@@ -51,6 +56,10 @@ export default function AdminSettings() {
           
           <TabsContent value="email">
             <AdminEmailSetup />
+          </TabsContent>
+          
+          <TabsContent value="helpdesk">
+            <AdminHelpdeskSetup />
           </TabsContent>
         </Tabs>
       </div>

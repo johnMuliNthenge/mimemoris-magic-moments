@@ -346,6 +346,30 @@ export type Database = {
         }
         Relationships: []
       }
+      helpdesk_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          updated_at: string
+          whatsapp_number: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          whatsapp_number: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
       memories: {
         Row: {
           ai_analysis: Json | null
