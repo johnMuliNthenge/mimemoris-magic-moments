@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { User, Globe, Moon, Sun, Loader2 } from 'lucide-react';
+import { User, Globe, Moon, Sun, Loader2, CreditCard, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,9 +15,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 
 const languages = [
@@ -31,6 +34,8 @@ export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { subscription } = useSubscription();
 
   const [fullName, setFullName] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState(i18n.language);
@@ -41,8 +46,6 @@ export default function SettingsPage() {
     setSelectedLanguage(lang);
     i18n.changeLanguage(lang);
     localStorage.setItem('i18nextLng', lang);
-    
-    // Update profile language preference
     if (user) {
       supabase
         .from('profiles')
@@ -60,15 +63,12 @@ export default function SettingsPage() {
   const updateProfile = async () => {
     if (!user || !fullName.trim()) return;
     setLoading(true);
-
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ full_name: fullName })
         .eq('user_id', user.id);
-
       if (error) throw error;
-
       toast({
         title: 'Profile Updated',
         description: 'Your profile has been updated successfully.',
@@ -95,6 +95,41 @@ export default function SettingsPage() {
           <p className="text-muted-foreground">
             Manage your account and preferences
           </p>
+        </motion.div>
+
+        {/* Subscription Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Card
+            className="border-border shadow-soft cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/subscription')}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                {t('nav_subscription')}
+              </CardTitle>
+              <CardDescription>
+                Manage your plan and billing
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Badge variant={subscription?.plan ? 'default' : 'secondary'} className={subscription?.plan ? 'gradient-warm text-primary-foreground' : ''}>
+                    {subscription?.plan?.name || 'No Plan'}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {subscription?.status === 'active' ? 'Active' : 'Upgrade to unlock features'}
+                  </span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Profile Settings */}
