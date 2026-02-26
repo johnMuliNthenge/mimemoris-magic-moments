@@ -175,11 +175,15 @@ export function AppLayout({ children }: AppLayoutProps) {
                 )}
               >
                 <div className={cn(
-                  "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200",
+                  "flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200",
                   isActive && "bg-primary text-primary-foreground shadow-glow"
                 )}>
-                  <item.icon className="w-4 h-4" />
+                  <item.icon className="w-3.5 h-3.5" />
                 </div>
+                <span className={cn(
+                  "text-[9px] font-medium leading-tight",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}>{item.label}</span>
                 {item.badge > 0 && (
                   <Badge variant="destructive" className="absolute top-0 right-0 h-4 min-w-4 px-1 text-[9px] justify-center">
                     {item.badge}
@@ -192,13 +196,19 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Link
               to="/admin"
               className={cn(
-                "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200",
+                "relative flex flex-col items-center justify-center gap-0.5 px-2 h-full transition-all duration-200",
                 location.pathname.startsWith('/admin')
-                  ? "bg-collab text-collab-foreground"
+                  ? "text-primary"
                   : "text-muted-foreground"
               )}
             >
-              <Shield className="w-4 h-4" />
+              <div className={cn(
+                "flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200",
+                location.pathname.startsWith('/admin') && "bg-collab text-collab-foreground"
+              )}>
+                <Shield className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[9px] font-medium leading-tight">{t('nav_admin')}</span>
             </Link>
           )}
         </div>
