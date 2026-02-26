@@ -276,7 +276,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
         >
-          <MemoryQuery onMemoryFound={(memory) => navigate(`/memories/${memory.id}/edit`)} />
+          <MemoryQuery onMemoryFound={(memory) => navigate(`/memories/list?view=list&date=${memory.memory_date}`)} />
         </motion.div>
 
         {/* Recent Memories */}
