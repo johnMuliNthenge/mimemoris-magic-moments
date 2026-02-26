@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
   BookHeart, 
@@ -12,8 +12,7 @@ import {
   LogOut,
   Sun,
   Moon,
-  Handshake,
-  MoreHorizontal
+  Handshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +33,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user, isAdmin, signOut } = useAuth();
   const { pendingRequests } = useFriends();
   const [isDark, setIsDark] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const incomingRequestCount = pendingRequests.filter(r => r.is_follower).length;
 
@@ -47,9 +45,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     { path: '/settings', icon: Settings, label: t('nav_settings'), badge: 0 },
   ];
 
-  // Mobile: show first 4 + "more" button
-  const mobileMainItems = navItems.slice(0, 4);
-  const mobileMoreItems = navItems.slice(4);
 
   const handleSignOut = async () => {
     await signOut();
@@ -64,7 +59,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar - Desktop */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 shadow-soft">
+      <header className="fixed top-0 left-0 right-0 bg-card border-b border-border z-50 shadow-soft">
         <div className="flex items-center justify-between h-full px-4 max-w-7xl mx-auto">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
@@ -163,101 +158,54 @@ export function AppLayout({ children }: AppLayoutProps) {
             </Button>
           </div>
         </div>
-      </header>
 
-      {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border z-50 shadow-soft">
-        <div className="flex items-center justify-around h-full px-2">
-          {mobileMainItems.map((item) => {
+        {/* Mobile Nav Icons Row - below header */}
+        <div className="md:hidden flex items-center justify-around px-1 h-12 border-t border-border/50 bg-card">
+          {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                onClick={() => setMoreOpen(false)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors",
+                  "relative flex flex-col items-center justify-center gap-0.5 px-2 h-full transition-all duration-200",
                   isActive
                     ? "text-primary"
                     : "text-muted-foreground"
                 )}
               >
-                <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                <div className={cn(
+                  "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200",
+                  isActive && "bg-primary text-primary-foreground shadow-glow"
+                )}>
+                  <item.icon className="w-4 h-4" />
+                </div>
                 {item.badge > 0 && (
-                  <Badge variant="destructive" className="absolute top-1.5 right-1/4 h-4 min-w-4 px-1 text-[9px] justify-center">
+                  <Badge variant="destructive" className="absolute top-0 right-0 h-4 min-w-4 px-1 text-[9px] justify-center">
                     {item.badge}
                   </Badge>
                 )}
               </Link>
             );
           })}
-
-          {/* More button */}
-          <button
-            onClick={() => setMoreOpen(!moreOpen)}
-            className={cn(
-              "relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors",
-              moreOpen ? "text-primary" : "text-muted-foreground"
-            )}
-          >
-            <MoreHorizontal className="w-5 h-5" />
-            <span className="text-[10px] font-medium leading-tight">More</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile "More" popup */}
-      <AnimatePresence>
-        {moreOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="md:hidden fixed bottom-16 left-0 right-0 bg-card border-t border-border z-40 shadow-lg rounded-t-2xl"
-          >
-            <div className="p-4 grid grid-cols-3 gap-4">
-              {mobileMoreItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMoreOpen(false)}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-secondary"
-                    )}
-                  >
-                    <item.icon className="w-6 h-6" />
-                    <span className="text-xs font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  onClick={() => setMoreOpen(false)}
-                  className={cn(
-                    "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors",
-                    location.pathname.startsWith('/admin')
-                      ? "bg-collab text-collab-foreground"
-                      : "text-muted-foreground hover:bg-secondary"
-                  )}
-                >
-                  <Shield className="w-6 h-6" />
-                  <span className="text-xs font-medium">{t('nav_admin')}</span>
-                </Link>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={cn(
+                "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200",
+                location.pathname.startsWith('/admin')
+                  ? "bg-collab text-collab-foreground"
+                  : "text-muted-foreground"
               )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            >
+              <Shield className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+      </header>
 
       {/* Main Content */}
-      <main className="pt-14 pb-16 md:pb-0 min-h-screen">
+      <main className="pt-[6.5rem] md:pt-14 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           {children}
         </div>
