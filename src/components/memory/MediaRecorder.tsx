@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Video, Square, Play, Pause, Trash2, Check } from 'lucide-react';
+import { Mic, Video, Square, Play, Pause, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface MediaRecorderProps {
   type: 'audio' | 'video';
@@ -16,6 +17,8 @@ export function MediaRecorder({ type, onRecordingComplete, onCancel }: MediaReco
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [permissionError, setPermissionError] = useState(false);
+  const { toast } = useToast();
 
   const mediaRecorderRef = useRef<globalThis.MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -61,10 +64,18 @@ export function MediaRecorder({ type, onRecordingComplete, onCancel }: MediaReco
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing media devices:', error);
+      setPermissionError(true);
+      toast({
+        variant: 'destructive',
+        title: 'Camera/Microphone Access Denied',
+        description: type === 'video' 
+          ? 'Please allow camera & microphone access in your browser settings, then try again.'
+          : 'Please allow microphone access in your browser settings, then try again.',
+      });
     }
-  }, [type]);
+  }, [type, toast]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording) {
@@ -128,6 +139,32 @@ export function MediaRecorder({ type, onRecordingComplete, onCancel }: MediaReco
       animate={{ opacity: 1, scale: 1 }}
       className="border-2 border-dashed border-border rounded-xl p-6 bg-card"
     >
+      {/* Permission Error */}
+      {permissionError && (
+        <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium text-destructive text-sm">
+              {type === 'video' ? 'Camera & Microphone' : 'Microphone'} access required
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Tap the lock/site-settings icon in your browser's address bar, allow {type === 'video' ? 'camera & microphone' : 'microphone'} access, then reload and try again.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              onClick={() => {
+                setPermissionError(false);
+                startRecording();
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Video Preview */}
       {type === 'video' && (
         <div className="relative mb-4 rounded-lg overflow-hidden bg-muted aspect-video">
