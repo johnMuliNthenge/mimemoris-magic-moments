@@ -323,16 +323,34 @@ export default function CreateMemory() {
                   </div>
                 )}
 
-                {/* Description for media */}
+                {/* Narration / Description for media */}
                 <div className="mt-4 space-y-2">
-                  <Label htmlFor="description">Description (optional)</Label>
+                  <Label htmlFor="description" className="flex items-center gap-2">
+                    {selectedType === 'video' ? (
+                      <>
+                        <Mic className="w-4 h-4 text-primary" />
+                        Narration / Description
+                      </>
+                    ) : (
+                      'Description (optional)'
+                    )}
+                  </Label>
                   <Textarea
                     id="description"
-                    placeholder={t('describe_memory')}
-                    className="min-h-20"
+                    placeholder={
+                      selectedType === 'video'
+                        ? 'Add a brief narration or describe what this video captures...'
+                        : t('describe_memory')
+                    }
+                    className="min-h-24"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                   />
+                  {selectedType === 'video' && (
+                    <p className="text-xs text-muted-foreground">
+                      Tip: Your video records with audio. Add written context here for your future self.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
