@@ -148,6 +148,24 @@ export function PublicFeed() {
       ? `${memory.user_profile?.full_name || 'Someone'} shared: "${memory.content.slice(0, 100)}${memory.content.length > 100 ? '...' : ''}"`
       : `Check out this memory on Mimemora!`;
 
+    const copyFallback = async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({ title: 'Link copied!', description: 'Share link copied to clipboard' });
+      } catch {
+        // Final fallback using textarea
+        const textarea = document.createElement('textarea');
+        textarea.value = shareUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        toast({ title: 'Link copied!', description: 'Share link copied to clipboard' });
+      }
+    };
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -156,19 +174,13 @@ export function PublicFeed() {
           url: shareUrl,
         });
       } catch (err: any) {
-        // User cancelled share — ignore
         if (err.name !== 'AbortError') {
-          console.error('Share failed', err);
+          // Permission denied or other error — fall back to copy
+          await copyFallback();
         }
       }
     } else {
-      // Fallback: copy link to clipboard
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        toast({ title: 'Link copied!', description: 'Share link copied to clipboard' });
-      } catch {
-        toast({ variant: 'destructive', title: 'Unable to share', description: 'Could not copy the link' });
-      }
+      await copyFallback();
     }
   };
 
