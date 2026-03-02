@@ -3,8 +3,59 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+// Comprehensive emoji mapping for moods
+const moodEmojiMap: Record<string, string> = {
+  // Positive
+  joy: '😊', happy: '😊', happiness: '😊',
+  love: '🥰', loving: '🥰', romantic: '💕',
+  excited: '🤩', excitement: '🤩', thrilled: '🤩',
+  grateful: '🙏', gratitude: '🙏', thankful: '🙏',
+  proud: '😎', pride: '😎', confident: '😎',
+  peaceful: '😌', calm: '😌', serene: '😌', relaxed: '😌',
+  hopeful: '🌟', optimistic: '🌟', inspired: '✨',
+  amused: '😄', funny: '😂', laughing: '😂',
+  celebratory: '🎉', celebrating: '🎉', party: '🥳',
+  nostalgic: '🥹', sentimental: '🥹',
+  curious: '🤔', wondering: '🤔', thoughtful: '🤔',
+  playful: '😜', silly: '🤪',
+  determined: '💪', motivated: '🔥',
+  surprised: '😲', amazed: '😮',
+  relieved: '😮‍💨', comfort: '🤗',
+  // Negative
+  sad: '😢', sadness: '😢', crying: '😭', grief: '😭',
+  angry: '😤', anger: '😤', frustrated: '😤', annoyed: '😒',
+  anxious: '😰', anxiety: '😰', worried: '😟', nervous: '😬',
+  tired: '😴', exhausted: '😴', sleepy: '😴',
+  lonely: '🥺', alone: '🥺', missing: '🥺',
+  confused: '😵‍💫', overwhelmed: '🤯',
+  scared: '😨', fearful: '😨', afraid: '😱',
+  disappointed: '😞', let_down: '😞',
+  bored: '😐', indifferent: '😐',
+  jealous: '😒', envious: '😒',
+  guilty: '😔', ashamed: '😔', regretful: '😔',
+  stressed: '😫', pressured: '😫',
+  heartbroken: '💔', devastated: '💔',
+  // Neutral
+  neutral: '😐', okay: '🙂', fine: '🙂',
+  reflective: '🪞', contemplative: '🧘',
+  focused: '🎯', working: '💻',
+};
+
+function mapEmoji(emotions: string[], sentiment: string): string {
+  // Try to find the best emoji from detected emotions
+  for (const emotion of emotions) {
+    const key = emotion.toLowerCase().replace(/\s+/g, '_');
+    if (moodEmojiMap[key]) return moodEmojiMap[key];
+  }
+  // Fallback to sentiment
+  if (sentiment === 'positive') return '😊';
+  if (sentiment === 'negative') return '😢';
+  if (sentiment === 'mixed') return '🤔';
+  return '😐';
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,22 +63,45 @@ serve(async (req) => {
   }
 
   try {
-    const { content, memoryType, mood } = await req.json();
+    const { content, memoryType, mood, mediaUrl } = await req.json();
 
-    const prompt = `Analyze this memory and provide insights about the emotional state and themes. Be warm, empathetic, and helpful.
+    // Build a context-aware prompt depending on what content is available
+    let contentDescription = '';
+    if (content) {
+      contentDescription += `Text Content: ${content}\n`;
+    }
+    if (mediaUrl) {
+      contentDescription += `Media URL (${memoryType}): ${mediaUrl}\n`;
+      if (memoryType === 'photo') {
+        contentDescription += `This is a photo memory. Analyze the context from any text provided and the fact that the user chose to capture a visual moment.\n`;
+      } else if (memoryType === 'video') {
+        contentDescription += `This is a video memory. Consider the emotional significance of capturing a video moment.\n`;
+      } else if (memoryType === 'audio') {
+        contentDescription += `This is an audio memory. Consider the emotional significance of capturing a voice/sound moment.\n`;
+      }
+    }
+    if (mood) {
+      contentDescription += `User's manually selected mood emoji: ${mood}\n`;
+    }
+    if (!content && !mood && !mediaUrl) {
+      contentDescription = 'No content provided yet.\n';
+    }
+
+    const prompt = `You are an expert emotion and mood analyst. Analyze this memory and detect the user's emotional state with high precision.
 
 Memory Type: ${memoryType}
-User's Selected Mood: ${mood || 'Not specified'}
-Content: ${content || 'No text content provided'}
+${contentDescription}
 
-Provide a JSON response with:
-1. "sentiment": overall sentiment (positive, negative, neutral, mixed)
-2. "emotions": array of detected emotions (e.g., joy, nostalgia, gratitude, love, sadness)
-3. "themes": array of life themes present (e.g., family, friendship, achievement, growth, travel)
-4. "insight": a brief, warm insight or reflection about this memory (2-3 sentences)
-5. "suggestedActions": array of 1-2 suggestions for the user (e.g., "Consider sharing this memory with your loved ones")
+You MUST respond with ONLY valid JSON (no markdown, no code blocks) with these fields:
+1. "sentiment": overall sentiment - one of: "positive", "negative", "neutral", "mixed"
+2. "primary_emotion": the single strongest emotion detected (e.g., "joy", "nostalgia", "gratitude", "sadness", "excitement", "love", "anxiety", "pride", "calm", "anger", "hope", "loneliness")
+3. "emotions": array of ALL detected emotions (be thorough, detect subtle emotions too)
+4. "themes": array of life themes present (e.g., "family", "friendship", "achievement", "growth", "travel", "work", "health", "romance", "loss", "adventure")
+5. "insight": a brief, warm 2-3 sentence reflection about this memory
+6. "suggestedActions": array of 1-2 suggestions
+7. "confidence": a number 0-1 indicating how confident you are in the mood detection
 
-Respond ONLY with valid JSON, no markdown.`;
+Be empathetic and thorough. Even short text can reveal deep emotions. Consider word choice, tone, punctuation, and context.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -36,9 +110,9 @@ Respond ONLY with valid JSON, no markdown.`;
         'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-3-flash-preview',
         messages: [
-          { role: 'system', content: 'You are an empathetic memory analyst that helps users understand and appreciate their memories. Always respond with valid JSON.' },
+          { role: 'system', content: 'You are an empathetic emotion analyst specializing in detecting moods and feelings from text, context, and media descriptions. Always respond with valid JSON only, no markdown formatting.' },
           { role: 'user', content: prompt }
         ],
       }),
@@ -47,28 +121,60 @@ Respond ONLY with valid JSON, no markdown.`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI API error response:', errorText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again shortly.' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add credits.' }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       throw new Error(`AI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const analysisText = data.choices[0].message.content;
     
-    // Parse the JSON response
+    // Parse the JSON response - handle potential markdown wrapping
     let analysis;
     try {
-      analysis = JSON.parse(analysisText);
+      // Strip markdown code block if present
+      let cleanText = analysisText.trim();
+      if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+      }
+      analysis = JSON.parse(cleanText);
     } catch {
-      // If parsing fails, create a basic structure
       analysis = {
-        sentiment: 'positive',
-        emotions: ['joy'],
+        sentiment: 'neutral',
+        primary_emotion: 'reflective',
+        emotions: ['reflective'],
         themes: ['life'],
-        insight: 'This memory captures a meaningful moment in your life.',
-        suggestedActions: ['Reflect on what made this moment special']
+        insight: 'This memory captures a moment in your life.',
+        suggestedActions: ['Reflect on what made this moment meaningful'],
+        confidence: 0.3
       };
     }
 
-    return new Response(JSON.stringify(analysis), {
+    // Map the primary emotion to an emoji
+    const detectedEmoji = mapEmoji(
+      [analysis.primary_emotion, ...(analysis.emotions || [])],
+      analysis.sentiment
+    );
+
+    // Return enriched analysis with emoji
+    const enrichedAnalysis = {
+      ...analysis,
+      emoji: detectedEmoji,
+      mood_label: analysis.primary_emotion,
+    };
+
+    return new Response(JSON.stringify(enrichedAnalysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: unknown) {

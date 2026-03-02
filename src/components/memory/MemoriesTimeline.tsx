@@ -252,12 +252,12 @@ export function MemoriesTimeline({ memories, onMemoryClick, onDeleteMemory }: Me
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
+                                  {!isLocked && memory.mood && (
+                                    <span className="text-2xl" title="AI detected mood">{memory.mood}</span>
+                                  )}
                                   <h4 className="font-medium truncate">
                                     {isLocked ? (memory.title || t('timelock_locked_content')) : (memory.title || 'Untitled Memory')}
                                   </h4>
-                                  {!isLocked && memory.mood && (
-                                    <span className="text-lg">{memory.mood}</span>
-                                  )}
                                 </div>
                                 {isLocked ? (
                                   <p className="text-sm text-muted-foreground italic">
@@ -355,19 +355,23 @@ export function MemoriesTimeline({ memories, onMemoryClick, onDeleteMemory }: Me
                     <div className="text-xs font-medium text-center mb-1">
                       {format(day, 'd')}
                     </div>
-                    {dayMemories.length > 0 && (
+                {dayMemories.length > 0 && (
                       <div className="flex flex-wrap justify-center gap-0.5">
                         {dayMemories.slice(0, 3).map(memory => (
-                          <div
-                            key={memory.id}
-                            className={cn(
-                              "w-2 h-2 rounded-full",
-                              memory.memory_type === 'text' && "bg-primary",
-                              memory.memory_type === 'audio' && "bg-accent",
-                              memory.memory_type === 'video' && "bg-collab",
-                              memory.memory_type === 'photo' && "bg-success"
-                            )}
-                          />
+                          memory.mood ? (
+                            <span key={memory.id} className="text-xs leading-none">{memory.mood}</span>
+                          ) : (
+                            <div
+                              key={memory.id}
+                              className={cn(
+                                "w-2 h-2 rounded-full",
+                                memory.memory_type === 'text' && "bg-primary",
+                                memory.memory_type === 'audio' && "bg-accent",
+                                memory.memory_type === 'video' && "bg-collab",
+                                memory.memory_type === 'photo' && "bg-success"
+                              )}
+                            />
+                          )
                         ))}
                         {dayMemories.length > 3 && (
                           <span className="text-[8px] text-muted-foreground">+{dayMemories.length - 3}</span>

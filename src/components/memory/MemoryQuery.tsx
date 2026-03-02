@@ -33,7 +33,7 @@ export function MemoryQuery({ onMemoryFound }: MemoryQueryProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ memory: Memory | null; summary: string } | null>(null);
+  const [result, setResult] = useState<{ memories: Memory[]; summary: string } | null>(null);
 
   const extractDateFromQuestion = (text: string): Date | null => {
     // Try to extract date patterns like "Sep 3, 2023", "3 sep 2023", "2023-09-03", etc.
@@ -59,47 +59,48 @@ export function MemoryQuery({ onMemoryFound }: MemoryQueryProps) {
     return null;
   };
 
-  const queryMemoryByDate = async (date: Date) => {
-    if (!user) return null;
+  const queryMemoriesByDate = async (date: Date) => {
+    if (!user) return [];
 
     const dateStr = format(date, 'yyyy-MM-dd');
     const { data, error } = await supabase
       .from('memories')
       .select('*')
       .eq('user_id', user.id)
-      .eq('memory_date', dateStr)
-      .maybeSingle();
+      .eq('memory_date', dateStr);
 
     if (error) {
-      console.error('Error fetching memory:', error);
-      return null;
+      console.error('Error fetching memories:', error);
+      return [];
     }
 
-    return data as Memory | null;
+    return (data || []) as Memory[];
   };
 
-  const generateSummary = (memory: Memory, queryType: 'feeling' | 'doing' | 'general'): string => {
-    const dateFormatted = format(new Date(memory.memory_date), 'MMMM d, yyyy');
-    const moodEmoji = memory.mood || '';
+  const generateSummary = (memories: Memory[], queryType: 'feeling' | 'doing' | 'general', date: Date): string => {
+    const dateFormatted = format(date, 'MMMM d, yyyy (EEEE)');
     
+    if (memories.length === 0) {
+      return `No memories found for ${dateFormatted}.`;
+    }
+
+    const moodEmojis = memories.filter(m => m.mood).map(m => m.mood).join(' ');
+    const moodSummary = moodEmojis ? `Moods: ${moodEmojis}` : 'No mood detected';
+
     if (queryType === 'feeling') {
-      if (memory.mood) {
-        return `On ${dateFormatted}, you were feeling ${moodEmoji}. ${memory.content ? `You wrote: "${memory.content.substring(0, 150)}${memory.content.length > 150 ? '...' : ''}"` : ''}`;
+      if (moodEmojis) {
+        return `On ${dateFormatted}, your detected moods were ${moodEmojis}. You had ${memories.length} ${memories.length === 1 ? 'memory' : 'memories'} that day.`;
       }
-      return `On ${dateFormatted}, you captured a memory but didn't record a specific mood. ${memory.content ? `Your entry: "${memory.content.substring(0, 150)}${memory.content.length > 150 ? '...' : ''}"` : ''}`;
+      return `On ${dateFormatted}, you captured ${memories.length} ${memories.length === 1 ? 'memory' : 'memories'} but no mood was detected.`;
     }
     
     if (queryType === 'doing') {
-      const typeDescriptions = {
-        text: 'wrote a journal entry',
-        audio: 'recorded an audio memory',
-        video: 'captured a video memory',
-        photo: 'took a photo memory'
-      };
-      return `On ${dateFormatted}, you ${typeDescriptions[memory.memory_type]}${memory.title ? ` titled "${memory.title}"` : ''}. ${memory.content ? `Details: "${memory.content.substring(0, 150)}${memory.content.length > 150 ? '...' : ''}"` : ''}`;
+      const types = memories.map(m => m.memory_type).join(', ');
+      return `On ${dateFormatted}, you captured ${memories.length} ${memories.length === 1 ? 'memory' : 'memories'} (${types}). ${moodSummary}.`;
     }
 
-    return `On ${dateFormatted}${memory.mood ? ` (feeling ${moodEmoji})` : ''}, you ${memory.memory_type === 'text' ? 'wrote' : 'captured'} a memory${memory.title ? ` titled "${memory.title}"` : ''}. ${memory.content ? `"${memory.content.substring(0, 200)}${memory.content.length > 200 ? '...' : ''}"` : ''}`;
+    const firstMemory = memories[0];
+    return `On ${dateFormatted} ${moodEmojis ? `(${moodEmojis})` : ''}, you captured ${memories.length} ${memories.length === 1 ? 'memory' : 'memories'}. ${firstMemory.content ? `First entry: "${firstMemory.content.substring(0, 150)}${firstMemory.content.length > 150 ? '...' : ''}"` : ''}`;
   };
 
   const determineQueryType = (text: string): 'feeling' | 'doing' | 'general' => {
@@ -120,14 +121,10 @@ export function MemoryQuery({ onMemoryFound }: MemoryQueryProps) {
     setResult(null);
 
     try {
-      const memory = await queryMemoryByDate(date);
-      if (memory) {
-        const summary = generateSummary(memory, 'general');
-        setResult({ memory, summary });
-        onMemoryFound?.(memory);
-      } else {
-        setResult({ memory: null, summary: `No memory found for ${format(date, 'MMMM d, yyyy')}.` });
-      }
+      const memories = await queryMemoriesByDate(date);
+      const summary = generateSummary(memories, 'general', date);
+      setResult({ memories, summary });
+      if (memories.length > 0) onMemoryFound?.(memories[0]);
     } catch (error) {
       toast.error('Failed to query memory');
     } finally {
@@ -145,22 +142,17 @@ export function MemoryQuery({ onMemoryFound }: MemoryQueryProps) {
     try {
       const extractedDate = extractDateFromQuestion(question);
       if (!extractedDate) {
-        setResult({ memory: null, summary: "I couldn't find a date in your question. Please include a specific date like 'Sep 3, 2023' or use the calendar to select a date." });
+        setResult({ memories: [], summary: "I couldn't find a date in your question. Please include a specific date like 'Sep 3, 2023' or use the calendar to select a date." });
         setLoading(false);
         return;
       }
 
       setSelectedDate(extractedDate);
-      const memory = await queryMemoryByDate(extractedDate);
+      const memories = await queryMemoriesByDate(extractedDate);
       const queryType = determineQueryType(question);
-
-      if (memory) {
-        const summary = generateSummary(memory, queryType);
-        setResult({ memory, summary });
-        onMemoryFound?.(memory);
-      } else {
-        setResult({ memory: null, summary: `No memory found for ${format(extractedDate, 'MMMM d, yyyy')}. Try another date!` });
-      }
+      const summary = generateSummary(memories, queryType, extractedDate);
+      setResult({ memories, summary });
+      if (memories.length > 0) onMemoryFound?.(memories[0]);
     } catch (error) {
       toast.error('Failed to query memory');
     } finally {
@@ -246,15 +238,15 @@ export function MemoryQuery({ onMemoryFound }: MemoryQueryProps) {
         {result && !loading && (
           <div className={cn(
             "mt-4 p-4 rounded-lg",
-            result.memory ? "bg-primary/10 border border-primary/20" : "bg-secondary/50"
+            result.memories.length > 0 ? "bg-primary/10 border border-primary/20" : "bg-secondary/50"
           )}>
             <p className="text-sm leading-relaxed">{result.summary}</p>
-            {result.memory && (
+            {result.memories.length > 0 && (
               <Button
                 variant="link"
                 size="sm"
                 className="mt-2 p-0 h-auto text-primary"
-                onClick={() => onMemoryFound?.(result.memory!)}
+                onClick={() => onMemoryFound?.(result.memories[0])}
               >
                 View full memory →
               </Button>
