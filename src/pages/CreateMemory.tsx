@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -15,7 +15,9 @@ import {
   Smile,
   Circle,
   Globe,
-  Lock
+  Lock,
+  Brain,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,9 +25,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { MediaRecorder } from '@/components/memory/MediaRecorder';
-import { MoodAnalysis } from '@/components/memory/MoodAnalysis';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useToast } from '@/hooks/use-toast';
@@ -39,8 +41,6 @@ const memoryTypes = [
   { type: 'photo', icon: Image, label: 'Photo', color: 'bg-success' },
 ] as const;
 
-const moods = ['😊', '😢', '😍', '🤔', '😴', '🎉', '😤', '😌', '🥰', '😎'];
-
 export default function CreateMemory() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -53,15 +53,61 @@ export default function CreateMemory() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [memoryDate, setMemoryDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [detectedMood, setDetectedMood] = useState<string | null>(null);
+  const [detectedEmoji, setDetectedEmoji] = useState<string | null>(null);
+  const [moodLabel, setMoodLabel] = useState<string | null>(null);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [analyzingMood, setAnalyzingMood] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [isPublic, setIsPublic] = useState(false);
   const [lockedUntil, setLockedUntil] = useState('');
+
+  // Auto-detect mood when content changes (debounced)
+  const analyzeDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  
+  const runMoodAnalysis = useCallback(async (textContent: string, type: string, mediaUrl?: string) => {
+    if (!textContent && !mediaUrl) return;
+    
+    setAnalyzingMood(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-mood', {
+        body: { content: textContent, memoryType: type, mediaUrl },
+      });
+
+      if (error) throw error;
+
+      if (data && !data.error) {
+        setDetectedEmoji(data.emoji || null);
+        setDetectedMood(data.sentiment || null);
+        setMoodLabel(data.primary_emotion || data.mood_label || null);
+        setAiAnalysis(data);
+      }
+    } catch (err: any) {
+      console.error('Mood analysis error:', err);
+    } finally {
+      setAnalyzingMood(false);
+    }
+  }, []);
+
+  // Auto-analyze text content after user stops typing (1.5s debounce)
+  useEffect(() => {
+    if (analyzeDebounceRef.current) {
+      clearTimeout(analyzeDebounceRef.current);
+    }
+
+    if (content && content.length >= 10) {
+      analyzeDebounceRef.current = setTimeout(() => {
+        runMoodAnalysis(content, selectedType);
+      }, 1500);
+    }
+
+    return () => {
+      if (analyzeDebounceRef.current) clearTimeout(analyzeDebounceRef.current);
+    };
+  }, [content, selectedType, runMoodAnalysis]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,7 +160,24 @@ export default function CreateMemory() {
         mediaUrl = urlData.publicUrl;
       }
 
-      // Create memory record
+      // If we have media but no AI analysis yet, run it now with the media URL
+      let finalAnalysis = aiAnalysis;
+      let finalEmoji = detectedEmoji;
+      if (!finalAnalysis && (content || mediaUrl)) {
+        try {
+          const { data } = await supabase.functions.invoke('analyze-mood', {
+            body: { content: content || '', memoryType: selectedType, mediaUrl },
+          });
+          if (data && !data.error) {
+            finalAnalysis = data;
+            finalEmoji = data.emoji || null;
+          }
+        } catch {
+          // Non-blocking - save memory even if analysis fails
+        }
+      }
+
+      // Create memory record with AI-detected mood emoji
       const insertData: any = {
         user_id: user?.id,
         memory_type: selectedType,
@@ -122,8 +185,8 @@ export default function CreateMemory() {
         title: title || null,
         content: content || null,
         media_url: mediaUrl,
-        mood: selectedMood,
-        ai_analysis: aiAnalysis,
+        mood: finalEmoji || detectedEmoji || null, // AI-detected emoji
+        ai_analysis: finalAnalysis,
         is_public: isPublic,
       };
       if (lockedUntil) {
@@ -145,8 +208,10 @@ export default function CreateMemory() {
       }
 
       toast({
-        title: 'Memory Saved!',
-        description: 'Your memory has been captured successfully.',
+        title: 'Memory Saved! ' + (finalEmoji || '✨'),
+        description: moodLabel 
+          ? `Mood detected: ${moodLabel} ${finalEmoji}` 
+          : 'Your memory has been captured successfully.',
       });
 
       refetch();
@@ -303,7 +368,6 @@ export default function CreateMemory() {
                   </Card>
                 ) : (
                   <div className="space-y-3">
-                    {/* Recording option for audio/video */}
                     {(selectedType === 'audio' || selectedType === 'video') && (
                       <button
                         type="button"
@@ -317,7 +381,6 @@ export default function CreateMemory() {
                       </button>
                     )}
                     
-                    {/* Upload option */}
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -361,30 +424,69 @@ export default function CreateMemory() {
               </div>
             )}
 
-            {/* Mood Selection */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Smile className="w-4 h-4" />
-                How were you feeling?
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {moods.map((mood) => (
-                  <button
-                    key={mood}
-                    type="button"
-                    onClick={() => setSelectedMood(selectedMood === mood ? null : mood)}
-                    className={cn(
-                      "text-2xl p-2 rounded-lg transition-all",
-                      selectedMood === mood
-                        ? "bg-primary/20 scale-110"
-                        : "hover:bg-secondary"
-                    )}
+            {/* AI Mood Detection Card - Always visible */}
+            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Brain className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-sm">AI Mood Detection</span>
+                  {analyzingMood && (
+                    <div className="flex items-center gap-1 ml-auto">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      <span className="text-xs text-muted-foreground">Analyzing...</span>
+                    </div>
+                  )}
+                </div>
+
+                {detectedEmoji ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="space-y-3"
                   >
-                    {mood}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-4xl">{detectedEmoji}</span>
+                      <div>
+                        <p className="font-medium capitalize">{moodLabel || detectedMood}</p>
+                        <p className="text-xs text-muted-foreground">AI detected mood</p>
+                      </div>
+                      {aiAnalysis?.confidence && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {Math.round(aiAnalysis.confidence * 100)}% confident
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Detected emotions */}
+                    {aiAnalysis?.emotions && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {aiAnalysis.emotions.slice(0, 5).map((emotion: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs bg-accent/10">
+                            {emotion}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Insight */}
+                    {aiAnalysis?.insight && (
+                      <div className="p-2.5 bg-background/50 rounded-lg border border-border text-sm">
+                        <div className="flex items-start gap-2">
+                          <Sparkles className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                          <p className="text-muted-foreground text-xs">{aiAnalysis.insight}</p>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {content && content.length < 10
+                      ? 'Keep typing... AI will detect your mood automatically'
+                      : 'Start writing or upload media — AI will automatically detect your mood and assign an emoji'}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Time-Lock */}
             <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
@@ -429,16 +531,6 @@ export default function CreateMemory() {
               />
             </div>
 
-            {/* AI Mood Analysis */}
-            {(content || selectedMood) && (
-              <MoodAnalysis
-                content={content}
-                memoryType={selectedType}
-                mood={selectedMood}
-                onAnalysisComplete={setAiAnalysis}
-              />
-            )}
-
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">
               <Button
@@ -455,7 +547,7 @@ export default function CreateMemory() {
                 disabled={loading}
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t('save')}
+                {detectedEmoji ? `${t('save')} ${detectedEmoji}` : t('save')}
               </Button>
             </div>
           </form>
