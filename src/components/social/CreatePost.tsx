@@ -126,8 +126,8 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
       return;
     }
 
-    // Validate content for security
-    const contentValidation = validateSafeInput(content, 2000);
+    // Validate content length (up to ~500 words)
+    const contentValidation = validateSafeInput(content, 5000);
     if (!contentValidation.isValid) {
       toast({ variant: 'destructive', title: 'Invalid content', description: contentValidation.error });
       return;
@@ -201,7 +201,7 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="min-h-[80px] resize-none border-0 bg-muted/50 focus-visible:ring-1"
-              maxLength={2000}
+              maxLength={5000}
             />
             
             {/* Media Preview */}

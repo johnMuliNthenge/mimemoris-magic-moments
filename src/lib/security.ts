@@ -37,30 +37,15 @@ export const countrySchema = z.string().min(2).max(100);
 // Validate gender
 export const genderSchema = z.enum(['male', 'female', 'other', 'prefer_not_to_say']);
 
-// Validate content for SQL injection patterns
-export function hasSqlInjection(input: string): boolean {
-  if (!input) return false;
-  const sqlPatterns = [
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|TRUNCATE)\b)/gi,
-    /(-{2}|;|'|"|`)/g,
-    /(\bOR\b|\bAND\b)\s*(\d+\s*=\s*\d+|'[^']*'\s*=\s*'[^']*')/gi,
-  ];
-  return sqlPatterns.some(pattern => pattern.test(input));
-}
-
-// Validate and escape for safe database usage
-export function validateSafeInput(input: string, maxLength: number = 500): { isValid: boolean; sanitized: string; error?: string } {
+// Validate and sanitize for safe usage (no SQL injection check needed — Supabase uses parameterised queries)
+export function validateSafeInput(input: string, maxLength: number = 5000): { isValid: boolean; sanitized: string; error?: string } {
   if (!input) return { isValid: true, sanitized: '' };
   
   if (input.length > maxLength) {
     return { isValid: false, sanitized: '', error: `Input exceeds maximum length of ${maxLength} characters` };
   }
   
-  if (hasSqlInjection(input)) {
-    return { isValid: false, sanitized: '', error: 'Input contains potentially unsafe characters' };
-  }
-  
-  const sanitized = sanitizeInput(input.trim());
+  const sanitized = input.trim();
   return { isValid: true, sanitized };
 }
 
