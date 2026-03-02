@@ -8,7 +8,7 @@ import {
   Users, 
   Settings, 
   Shield, 
-  
+  BarChart3,
   LogOut,
   Sun,
   Moon,
@@ -40,6 +40,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav_home'), badge: 0 },
     { path: '/memories', icon: BookHeart, label: t('nav_memories'), badge: 0 },
     { path: '/friends', icon: Users, label: t('nav_friends'), badge: incomingRequestCount },
+    { path: '/analytics', icon: BarChart3, label: t('nav_analytics'), badge: 0 },
     { path: '/collaborate', icon: Handshake, label: t('nav_collaborate'), badge: 0 },
     { path: '/settings', icon: Settings, label: t('nav_settings'), badge: 0 },
   ];
