@@ -14,7 +14,8 @@ import {
   X,
   Smile,
   Circle,
-  Globe
+  Globe,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ export default function CreateMemory() {
   const [showRecorder, setShowRecorder] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [isPublic, setIsPublic] = useState(false);
+  const [lockedUntil, setLockedUntil] = useState('');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,7 +115,7 @@ export default function CreateMemory() {
       }
 
       // Create memory record
-      const { error } = await supabase.from('memories').insert({
+      const insertData: any = {
         user_id: user?.id,
         memory_type: selectedType,
         memory_date: memoryDate,
@@ -123,7 +125,11 @@ export default function CreateMemory() {
         mood: selectedMood,
         ai_analysis: aiAnalysis,
         is_public: isPublic,
-      });
+      };
+      if (lockedUntil) {
+        insertData.locked_until = new Date(lockedUntil).toISOString();
+      }
+      const { error } = await supabase.from('memories').insert(insertData);
 
       if (error) throw error;
 
@@ -379,6 +385,33 @@ export default function CreateMemory() {
                 ))}
               </div>
             </div>
+
+            {/* Time-Lock */}
+            <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
+              <div className="flex items-center gap-3">
+                <Lock className="w-5 h-5 text-primary" />
+                <div>
+                  <Label htmlFor="locked_until">{t('timelock_label')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('timelock_desc')}</p>
+                </div>
+              </div>
+            </div>
+            {
+              <div className="space-y-2 pl-2">
+                <Input
+                  id="locked_until"
+                  type="datetime-local"
+                  value={lockedUntil}
+                  onChange={(e) => setLockedUntil(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+                {lockedUntil && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setLockedUntil('')}>
+                    <X className="w-3 h-3 mr-1" /> {t('timelock_clear')}
+                  </Button>
+                )}
+              </div>
+            }
 
             {/* Share to Public Toggle */}
             <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">

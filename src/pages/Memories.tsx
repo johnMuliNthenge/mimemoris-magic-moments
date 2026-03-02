@@ -19,6 +19,7 @@ interface Memory {
   media_url: string | null;
   mood: string | null;
   created_at: string;
+  locked_until?: string | null;
 }
 
 export default function MemoriesPage() {
