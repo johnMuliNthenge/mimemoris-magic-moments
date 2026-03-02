@@ -12,7 +12,8 @@ import {
   LogOut,
   Sun,
   Moon,
-  Handshake
+  Handshake,
+  Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { path: '/memories', icon: BookHeart, label: t('nav_memories'), badge: 0 },
     { path: '/friends', icon: Users, label: t('nav_friends'), badge: incomingRequestCount },
     { path: '/analytics', icon: BarChart3, label: t('nav_analytics'), badge: 0 },
+    { path: '/future-messages', icon: Mail, label: t('nav_future_messages'), badge: 0 },
     { path: '/collaborate', icon: Handshake, label: t('nav_collaborate'), badge: 0 },
     { path: '/settings', icon: Settings, label: t('nav_settings'), badge: 0 },
   ];

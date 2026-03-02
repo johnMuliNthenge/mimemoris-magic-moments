@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isPast } from 'date-fns';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -11,7 +12,8 @@ import {
   Calendar,
   LayoutGrid,
   List,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,6 +36,7 @@ interface Memory {
   media_url: string | null;
   mood: string | null;
   created_at: string;
+  locked_until?: string | null;
 }
 
 interface MemoriesTimelineProps {
@@ -59,6 +62,7 @@ const typeColors = {
 const moods = ['😊', '😢', '😍', '🤔', '😴', '🎉', '😤', '😌', '🥰', '😎'];
 
 export function MemoriesTimeline({ memories, onMemoryClick, onDeleteMemory }: MemoriesTimelineProps) {
+  const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'timeline' | 'calendar'>('timeline');
   const [filterMood, setFilterMood] = useState<string>('all');
@@ -225,6 +229,7 @@ export function MemoriesTimeline({ memories, onMemoryClick, onDeleteMemory }: Me
                 <div className="space-y-3">
                   {dayMemories.map((memory, index) => {
                     const Icon = typeIcons[memory.memory_type];
+                    const isLocked = memory.locked_until && !isPast(parseISO(memory.locked_until));
                     return (
                       <motion.div
                         key={memory.id}
@@ -235,29 +240,34 @@ export function MemoriesTimeline({ memories, onMemoryClick, onDeleteMemory }: Me
                         <Card 
                           className={cn(
                             "cursor-pointer hover:shadow-md transition-all border-l-4",
+                            isLocked ? "border-l-muted-foreground/50 opacity-70" :
                             typeColors[memory.memory_type].replace('bg-', 'border-l-').split(' ')[0]
                           )}
-                          onClick={() => onMemoryClick?.(memory)}
+                          onClick={() => !isLocked && onMemoryClick?.(memory)}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start gap-4">
-                              <div className={cn("p-2 rounded-lg shrink-0", typeColors[memory.memory_type])}>
-                                <Icon className="w-4 h-4" />
+                              <div className={cn("p-2 rounded-lg shrink-0", isLocked ? "bg-muted" : typeColors[memory.memory_type])}>
+                                {isLocked ? <Lock className="w-4 h-4 text-muted-foreground" /> : <Icon className="w-4 h-4" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <h4 className="font-medium truncate">
-                                    {memory.title || 'Untitled Memory'}
+                                    {isLocked ? (memory.title || t('timelock_locked_content')) : (memory.title || 'Untitled Memory')}
                                   </h4>
-                                  {memory.mood && (
+                                  {!isLocked && memory.mood && (
                                     <span className="text-lg">{memory.mood}</span>
                                   )}
                                 </div>
-                                {memory.content && (
+                                {isLocked ? (
+                                  <p className="text-sm text-muted-foreground italic">
+                                    🔒 {t('timelock_locked')} {format(parseISO(memory.locked_until!), 'PPP p')}
+                                  </p>
+                                ) : memory.content ? (
                                   <p className="text-sm text-muted-foreground line-clamp-2">
                                     {memory.content}
                                   </p>
-                                )}
+                                ) : null}
                                 <div className="flex items-center gap-2 mt-2">
                                   <Badge variant="secondary" className="text-xs">
                                     {memory.memory_type}
@@ -267,7 +277,7 @@ export function MemoriesTimeline({ memories, onMemoryClick, onDeleteMemory }: Me
                                   </span>
                                 </div>
                               </div>
-                              {memory.media_url && memory.memory_type === 'photo' && (
+                              {!isLocked && memory.media_url && memory.memory_type === 'photo' && (
                                 <img
                                   src={memory.media_url}
                                   alt=""
