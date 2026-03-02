@@ -142,6 +142,36 @@ export function PublicFeed() {
     }
   };
 
+  const handleShare = async (memory: any) => {
+    const shareUrl = `https://mimemora.lovable.app/friends`;
+    const shareText = memory.content
+      ? `${memory.user_profile?.full_name || 'Someone'} shared: "${memory.content.slice(0, 100)}${memory.content.length > 100 ? '...' : ''}"`
+      : `Check out this memory on Mimemora!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Mimemora',
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err: any) {
+        // User cancelled share — ignore
+        if (err.name !== 'AbortError') {
+          console.error('Share failed', err);
+        }
+      }
+    } else {
+      // Fallback: copy link to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({ title: 'Link copied!', description: 'Share link copied to clipboard' });
+      } catch {
+        toast({ variant: 'destructive', title: 'Unable to share', description: 'Could not copy the link' });
+      }
+    }
+  };
+
   const handleLike = async (memoryId: string) => {
     if (!user) return;
     await toggleLike(memoryId);
@@ -296,7 +326,7 @@ export function PublicFeed() {
                       {memory.comments_count}
                     </Button>
                     
-                    <Button variant="ghost" size="sm" className="gap-2 ml-auto">
+                    <Button variant="ghost" size="sm" className="gap-2 ml-auto" onClick={() => handleShare(memory)}>
                       <Share2 className="w-5 h-5" />
                     </Button>
                   </div>
