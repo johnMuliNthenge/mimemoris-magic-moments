@@ -346,6 +346,39 @@ export type Database = {
         }
         Relationships: []
       }
+      future_messages: {
+        Row: {
+          content: string
+          created_at: string
+          deliver_at: string
+          id: string
+          is_delivered: boolean | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          deliver_at: string
+          id?: string
+          is_delivered?: boolean | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          deliver_at?: string
+          id?: string
+          is_delivered?: boolean | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       helpdesk_config: {
         Row: {
           created_at: string
@@ -380,6 +413,7 @@ export type Database = {
           is_from_collaboration: boolean | null
           is_public: boolean | null
           language: string | null
+          locked_until: string | null
           media_url: string | null
           memory_date: string
           memory_type: Database["public"]["Enums"]["memory_type"]
@@ -398,6 +432,7 @@ export type Database = {
           is_from_collaboration?: boolean | null
           is_public?: boolean | null
           language?: string | null
+          locked_until?: string | null
           media_url?: string | null
           memory_date: string
           memory_type: Database["public"]["Enums"]["memory_type"]
@@ -416,6 +451,7 @@ export type Database = {
           is_from_collaboration?: boolean | null
           is_public?: boolean | null
           language?: string | null
+          locked_until?: string | null
           media_url?: string | null
           memory_date?: string
           memory_type?: Database["public"]["Enums"]["memory_type"]
