@@ -23,6 +23,10 @@ const analyticsKeys = {
     analytics_ai_emotions: "AI-Detected Emotions",
     analytics_ai_emotions_desc: "Emotions detected across your memories by AI",
     analytics_no_ai: "No AI analysis data yet. Create memories with mood to see insights.",
+    analytics_view_all: "View all",
+    analytics_view_memories: "View memories",
+    analytics_recent: "Recent Memories",
+    analytics_untitled: "Untitled memory",
   },
   fr: {
     nav_analytics: "Analytique",
@@ -44,6 +48,10 @@ const analyticsKeys = {
     analytics_ai_emotions: "Émotions détectées par IA",
     analytics_ai_emotions_desc: "Émotions détectées dans vos souvenirs par l'IA",
     analytics_no_ai: "Pas encore de données d'analyse IA.",
+    analytics_view_all: "Voir tout",
+    analytics_view_memories: "Voir les souvenirs",
+    analytics_recent: "Souvenirs récents",
+    analytics_untitled: "Souvenir sans titre",
   },
   es: {
     nav_analytics: "Analítica",
@@ -65,6 +73,10 @@ const analyticsKeys = {
     analytics_ai_emotions: "Emociones detectadas por IA",
     analytics_ai_emotions_desc: "Emociones detectadas en tus recuerdos por la IA",
     analytics_no_ai: "Aún no hay datos de análisis de IA.",
+    analytics_view_all: "Ver todo",
+    analytics_view_memories: "Ver recuerdos",
+    analytics_recent: "Recuerdos recientes",
+    analytics_untitled: "Recuerdo sin título",
   },
   it: {
     nav_analytics: "Analisi",
@@ -86,6 +98,10 @@ const analyticsKeys = {
     analytics_ai_emotions: "Emozioni rilevate dall'IA",
     analytics_ai_emotions_desc: "Emozioni rilevate nei tuoi ricordi dall'IA",
     analytics_no_ai: "Nessun dato di analisi IA ancora.",
+    analytics_view_all: "Vedi tutto",
+    analytics_view_memories: "Vedi ricordi",
+    analytics_recent: "Ricordi recenti",
+    analytics_untitled: "Ricordo senza titolo",
   },
   sw: {
     nav_analytics: "Uchambuzi",
@@ -107,6 +123,10 @@ const analyticsKeys = {
     analytics_ai_emotions: "Hisia zilizotambuliwa na AI",
     analytics_ai_emotions_desc: "Hisia zilizotambuliwa katika kumbukumbu zako na AI",
     analytics_no_ai: "Hakuna data ya uchambuzi wa AI bado.",
+    analytics_view_all: "Tazama zote",
+    analytics_view_memories: "Tazama kumbukumbu",
+    analytics_recent: "Kumbukumbu za hivi karibuni",
+    analytics_untitled: "Kumbukumbu bila kichwa",
   },
   zh: {
     nav_analytics: "分析",
@@ -128,6 +148,10 @@ const analyticsKeys = {
     analytics_ai_emotions: "AI检测到的情绪",
     analytics_ai_emotions_desc: "AI在你的回忆中检测到的情绪",
     analytics_no_ai: "尚无AI分析数据。",
+    analytics_view_all: "查看全部",
+    analytics_view_memories: "查看回忆",
+    analytics_recent: "最近的回忆",
+    analytics_untitled: "无标题回忆",
   },
 };
 
