@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInSeconds } from 'date-fns';
 import { 
   Heart, 
   MessageCircle, 
   Share2, 
   Loader2,
   Globe,
-  Send
+  Send,
+  Pencil,
+  Check,
+  X
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -29,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { CreatePost } from './CreatePost';
 import { MediaPlayer } from './MediaPlayer';
 import { validateSafeInput } from '@/lib/security';
+import { useToast } from '@/hooks/use-toast';
 
 export function PublicFeed() {
   const { t } = useTranslation();
@@ -41,6 +46,17 @@ export function PublicFeed() {
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [userProfile, setUserProfile] = useState<{ full_name?: string; avatar_url?: string } | undefined>();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const { toast } = useToast();
+  const [now, setNow] = useState(Date.now());
+
+  // Tick every 10s so edit buttons disappear after 60s
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -84,6 +100,46 @@ export function PublicFeed() {
     setComments(updatedComments);
     setNewComment('');
     setSubmittingComment(false);
+  };
+
+  const canEdit = (memory: any) => {
+    if (!user || memory.user_id !== user.id) return false;
+    const secondsAgo = differenceInSeconds(new Date(), new Date(memory.created_at));
+    return secondsAgo <= 60;
+  };
+
+  const startEdit = (memory: any) => {
+    setEditingId(memory.id);
+    setEditContent(memory.content || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const validation = validateSafeInput(editContent, 5000);
+    if (!validation.isValid) {
+      toast({ variant: 'destructive', title: 'Invalid content', description: validation.error });
+      return;
+    }
+    setSavingEdit(true);
+    const { error } = await supabase
+      .from('memories')
+      .update({ content: validation.sanitized })
+      .eq('id', editingId)
+      .eq('user_id', user!.id);
+    setSavingEdit(false);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update post' });
+    } else {
+      toast({ title: 'Updated', description: 'Post updated successfully' });
+      setEditingId(null);
+      setEditContent('');
+      refetch();
+    }
   };
 
   const handleLike = async (memoryId: string) => {
@@ -150,6 +206,11 @@ export function PublicFeed() {
                       {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
                     </p>
                   </div>
+                  {canEdit(memory) && editingId !== memory.id && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(memory)}>
+                      <Pencil className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  )}
                   {memory.mood && (
                     <span className="text-2xl">{memory.mood}</span>
                   )}
@@ -160,9 +221,28 @@ export function PublicFeed() {
                     <h4 className="font-semibold mb-2">{memory.title}</h4>
                   )}
                   
-                  {memory.content && (
+                  {editingId === memory.id ? (
+                    <div className="mb-3 space-y-2">
+                      <Textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="min-h-[80px] resize-none"
+                        maxLength={5000}
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={savingEdit}>
+                          <X className="w-4 h-4 mr-1" /> Cancel
+                        </Button>
+                        <Button size="sm" onClick={saveEdit} disabled={savingEdit || !editContent.trim()}>
+                          {savingEdit ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : memory.content ? (
                     <p className="text-muted-foreground mb-3">{memory.content}</p>
-                  )}
+                  ) : null}
 
                   {memory.media_url && (
                     <div className="rounded-lg overflow-hidden bg-muted">
