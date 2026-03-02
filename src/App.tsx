@@ -29,6 +29,7 @@ import AdminSettings from "./pages/AdminSettings";
 import Social from "./pages/Social";
 import UserProfile from "./pages/UserProfile";
 import JoinGroup from "./pages/JoinGroup";
+import Analytics from "./pages/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/friends" element={<ProtectedRoute><Social /></ProtectedRoute>} />
             <Route path="/join-group/:code" element={<JoinGroup />} />
             <Route path="/profile/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/subscription" element={<ProtectedRoute><Subscription /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
