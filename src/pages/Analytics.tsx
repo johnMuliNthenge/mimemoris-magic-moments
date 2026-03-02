@@ -11,12 +11,13 @@ import {
   BarChart3,
   Sparkles,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { format, parseISO, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,6 +95,7 @@ export default function Analytics() {
       const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
       return {
         month: format(month, 'MMM yy'),
+        fullMonth: format(month, 'yyyy-MM'),
         score: avg ? Math.round(avg * 10) / 10 : null,
         count: monthMemories.length,
       };
@@ -108,6 +110,7 @@ export default function Analytics() {
     });
     return Object.entries(counts).map(([type, count]) => ({
       name: type.charAt(0).toUpperCase() + type.slice(1),
+      type,
       value: count,
       color: TYPE_COLORS[type] || 'hsl(0, 0%, 60%)',
     }));
@@ -129,7 +132,7 @@ export default function Analytics() {
       .sort((a, b) => b.count - a.count);
   }, [memories]);
 
-  // Wellness score (average mood score)
+  // Wellness score
   const wellnessScore = useMemo(() => {
     const scored = memories.filter((m) => m.mood && MOOD_MAP[m.mood]);
     if (scored.length === 0) return null;
@@ -165,7 +168,7 @@ export default function Analytics() {
       const count = memories.filter(
         (m) => format(parseISO(m.memory_date), 'yyyy-MM') === monthStr
       ).length;
-      return { month: format(month, 'MMM'), count };
+      return { month: format(month, 'MMM'), fullMonth: format(month, 'yyyy-MM'), count };
     });
   }, [memories]);
 
@@ -178,6 +181,24 @@ export default function Analytics() {
       stressed: sorted[sorted.length - 1],
     };
   }, [moodTrend]);
+
+  // Recent memories for quick access
+  const recentMemories = useMemo(() => {
+    return [...memories].reverse().slice(0, 5);
+  }, [memories]);
+
+  const navigateToMemories = (date?: string) => {
+    if (date) {
+      navigate(`/memories?date=${date}`);
+    } else {
+      navigate('/memories');
+    }
+  };
+
+  const navigateToMemoriesByMonth = (fullMonth: string) => {
+    // Navigate to the first day of that month
+    navigate(`/memories?date=${fullMonth}-01`);
+  };
 
   if (loading) {
     return (
@@ -222,7 +243,7 @@ export default function Analytics() {
             {/* Summary Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <Card className="border-border shadow-soft">
+                <Card className="border-border shadow-soft cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateToMemories()}>
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between">
                       <div>
@@ -233,12 +254,15 @@ export default function Analytics() {
                         <Heart className="w-5 h-5 text-primary" />
                       </div>
                     </div>
+                    <p className="text-xs text-primary flex items-center gap-1 mt-2">
+                      <ExternalLink className="w-3 h-3" /> {t('analytics_view_all')}
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Card className="border-border shadow-soft">
+                <Card className="border-border shadow-soft cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateToMemories()}>
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between">
                       <div>
@@ -249,12 +273,18 @@ export default function Analytics() {
                         <BarChart3 className="w-5 h-5 text-accent" />
                       </div>
                     </div>
+                    <p className="text-xs text-primary flex items-center gap-1 mt-2">
+                      <ExternalLink className="w-3 h-3" /> {t('analytics_view_all')}
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <Card className="border-border shadow-soft">
+                <Card
+                  className="border-border shadow-soft cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => extremePeriods.happiest?.fullMonth && navigateToMemoriesByMonth(extremePeriods.happiest.fullMonth)}
+                >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between">
                       <div>
@@ -266,12 +296,20 @@ export default function Analytics() {
                         <Sparkles className="w-5 h-5 text-success" />
                       </div>
                     </div>
+                    {extremePeriods.happiest && (
+                      <p className="text-xs text-primary flex items-center gap-1 mt-2">
+                        <ExternalLink className="w-3 h-3" /> {t('analytics_view_memories')}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                <Card className="border-border shadow-soft">
+                <Card
+                  className="border-border shadow-soft cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => extremePeriods.stressed?.fullMonth && navigateToMemoriesByMonth(extremePeriods.stressed.fullMonth)}
+                >
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between">
                       <div>
@@ -283,10 +321,54 @@ export default function Analytics() {
                         <Brain className="w-5 h-5 text-warning" />
                       </div>
                     </div>
+                    {extremePeriods.stressed && (
+                      <p className="text-xs text-primary flex items-center gap-1 mt-2">
+                        <ExternalLink className="w-3 h-3" /> {t('analytics_view_memories')}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
             </div>
+
+            {/* Recent Memories Quick Links */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+              <Card className="border-border shadow-soft">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-primary" />
+                      {t('analytics_recent')}
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={() => navigateToMemories()} className="text-primary text-xs">
+                      {t('analytics_view_all')} <ExternalLink className="w-3 h-3 ml-1" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {recentMemories.map((m) => (
+                      <div
+                        key={m.id}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => navigateToMemories(m.memory_date)}
+                      >
+                        <span className="text-lg">{m.mood || '📝'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {m.title || m.content?.slice(0, 50) || t('analytics_untitled')}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(parseISO(m.memory_date), 'MMM dd, yyyy')} · {m.memory_type}
+                          </p>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
             {/* Mood Trend Chart */}
             {moodTrend.length > 0 && (
@@ -301,7 +383,11 @@ export default function Analytics() {
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={moodTrend}>
+                      <AreaChart data={moodTrend} onClick={(data) => {
+                        if (data?.activePayload?.[0]?.payload?.fullMonth) {
+                          navigateToMemoriesByMonth(data.activePayload[0].payload.fullMonth);
+                        }
+                      }} style={{ cursor: 'pointer' }}>
                         <defs>
                           <linearGradient id="moodGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="hsl(15, 80%, 55%)" stopOpacity={0.3} />
@@ -311,7 +397,21 @@ export default function Analytics() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 85%)" />
                         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                         <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
-                        <RechartsTooltip />
+                        <RechartsTooltip content={({ active, payload }) => {
+                          if (active && payload?.[0]) {
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-card border border-border rounded-lg p-2 shadow-lg text-sm">
+                                <p className="font-medium">{d.month}</p>
+                                <p className="text-muted-foreground">Score: {d.score}</p>
+                                <p className="text-xs text-primary flex items-center gap-1 mt-1">
+                                  <ExternalLink className="w-3 h-3" /> Click to view memories
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }} />
                         <Area type="monotone" dataKey="score" stroke="hsl(15, 80%, 55%)" fill="url(#moodGrad)" strokeWidth={2} name="Mood Score" />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -333,11 +433,29 @@ export default function Analytics() {
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={activityData}>
+                      <BarChart data={activityData} onClick={(data) => {
+                        if (data?.activePayload?.[0]?.payload?.fullMonth) {
+                          navigateToMemoriesByMonth(data.activePayload[0].payload.fullMonth);
+                        }
+                      }} style={{ cursor: 'pointer' }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 85%)" />
                         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                         <YAxis tick={{ fontSize: 12 }} />
-                        <RechartsTooltip />
+                        <RechartsTooltip content={({ active, payload }) => {
+                          if (active && payload?.[0]) {
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-card border border-border rounded-lg p-2 shadow-lg text-sm">
+                                <p className="font-medium">{d.month}</p>
+                                <p className="text-muted-foreground">{d.count} memories</p>
+                                <p className="text-xs text-primary flex items-center gap-1 mt-1">
+                                  <ExternalLink className="w-3 h-3" /> Click to view
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }} />
                         <Bar dataKey="count" fill="hsl(175, 50%, 45%)" radius={[6, 6, 0, 0]} name="Memories" />
                       </BarChart>
                     </ResponsiveContainer>
@@ -365,6 +483,20 @@ export default function Analytics() {
                         <RechartsTooltip />
                       </PieChart>
                     </ResponsiveContainer>
+                    {/* Type links */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {typeDistribution.map((t) => (
+                        <Badge
+                          key={t.type}
+                          variant="secondary"
+                          className="cursor-pointer hover:bg-primary/10 transition-colors"
+                          onClick={() => navigateToMemories()}
+                        >
+                          {t.name}: {t.value}
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </Badge>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -384,12 +516,18 @@ export default function Analytics() {
                     ) : (
                       <div className="space-y-3">
                         {moodFrequency.map((m) => (
-                          <div key={m.mood} className="flex items-center gap-3">
+                          <div
+                            key={m.mood}
+                            className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-lg p-1 transition-colors"
+                            onClick={() => navigateToMemories()}
+                          >
                             <span className="text-2xl">{m.mood}</span>
                             <div className="flex-1">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-sm font-medium">{m.label}</span>
-                                <span className="text-xs text-muted-foreground">{m.count}</span>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  {m.count} <ExternalLink className="w-3 h-3" />
+                                </span>
                               </div>
                               <div className="h-2 rounded-full bg-secondary overflow-hidden">
                                 <div
@@ -425,8 +563,14 @@ export default function Analytics() {
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {emotionAgg.map((e) => (
-                          <Badge key={e.emotion} variant="secondary" className="text-sm px-3 py-1.5">
+                          <Badge
+                            key={e.emotion}
+                            variant="secondary"
+                            className="text-sm px-3 py-1.5 cursor-pointer hover:bg-primary/10 transition-colors"
+                            onClick={() => navigateToMemories()}
+                          >
                             {e.emotion} <span className="ml-1 text-xs text-muted-foreground">×{e.count}</span>
+                            <ExternalLink className="w-3 h-3 ml-1" />
                           </Badge>
                         ))}
                       </div>
