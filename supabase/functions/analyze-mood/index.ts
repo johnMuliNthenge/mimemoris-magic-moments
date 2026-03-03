@@ -94,12 +94,17 @@ ${contentDescription}
 
 You MUST respond with ONLY valid JSON (no markdown, no code blocks) with these fields:
 1. "sentiment": overall sentiment - one of: "positive", "negative", "neutral", "mixed"
-2. "primary_emotion": the single strongest emotion detected (e.g., "joy", "nostalgia", "gratitude", "sadness", "excitement", "love", "anxiety", "pride", "calm", "anger", "hope", "loneliness")
-3. "emotions": array of ALL detected emotions (be thorough, detect subtle emotions too)
-4. "themes": array of life themes present (e.g., "family", "friendship", "achievement", "growth", "travel", "work", "health", "romance", "loss", "adventure")
-5. "insight": a brief, warm 2-3 sentence reflection about this memory
-6. "suggestedActions": array of 1-2 suggestions
-7. "confidence": a number 0-1 indicating how confident you are in the mood detection
+2. "sentiment_score": a number from -1.0 (most negative) to 1.0 (most positive) representing the emotional intensity
+3. "primary_emotion": the single strongest emotion detected (e.g., "joy", "nostalgia", "gratitude", "sadness", "excitement", "love", "anxiety", "pride", "calm", "anger", "hope", "loneliness")
+4. "emotion_category": broad category - one of: "joy", "sadness", "anger", "fear", "surprise", "disgust", "trust", "anticipation", "love", "nostalgia", "neutral"
+5. "emotions": array of ALL detected emotions (be thorough, detect subtle emotions too)
+6. "themes": array of life themes present (e.g., "family", "friendship", "achievement", "growth", "travel", "work", "health", "romance", "loss", "adventure")
+7. "people_tags": array of people mentioned or implied (e.g., "mom", "best friend", "partner", "colleague", "family"). Extract from context clues.
+8. "event_category": classify the memory event - one of: "daily_life", "celebration", "travel", "work", "social", "family", "health", "achievement", "loss", "romantic", "creative", "spiritual", "education", "other"
+9. "location_hint": any location mentioned or implied (e.g., "home", "office", "beach", "restaurant", city names). Return null if none detected.
+10. "insight": a brief, warm 2-3 sentence reflection about this memory
+11. "suggestedActions": array of 1-2 suggestions
+12. "confidence": a number 0-1 indicating how confident you are in the mood detection
 
 Be empathetic and thorough. Even short text can reveal deep emotions. Consider word choice, tone, punctuation, and context.`;
 
