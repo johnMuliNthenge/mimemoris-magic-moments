@@ -22,6 +22,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFriends } from '@/hooks/useFriends';
 import { cn } from '@/lib/utils';
 import { FloatingHelpButton } from '@/components/layout/FloatingHelpButton';
+import { OfflineBanner } from '@/components/layout/OfflineBanner';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -216,8 +217,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       </header>
 
+      {/* Offline Banner */}
+      <div className="pt-[6.5rem] md:pt-14">
+        <OfflineBanner />
+      </div>
+
       {/* Main Content */}
-      <main className="pt-[6.5rem] md:pt-14 min-h-screen">
+      <main className="min-h-screen">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           {children}
         </div>
