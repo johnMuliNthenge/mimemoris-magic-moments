@@ -17,7 +17,9 @@ import {
   Globe,
   Lock,
   Brain,
-  Sparkles
+  Sparkles,
+  WifiOff,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +35,8 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { saveOfflineMemory, saveOfflineMedia } from '@/lib/offline-store';
+import { smartCompressImage, isVideoWithinTierLimits, formatCompressionStats, type CompressionTier } from '@/lib/smart-compression';
 
 const memoryTypes = [
   { type: 'text', icon: FileText, label: 'Text', color: 'bg-primary' },
@@ -109,19 +113,95 @@ export default function CreateMemory() {
     };
   }, [content, selectedType, runMoodAnalysis]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Determine compression tier from subscription
+  const compressionTier: CompressionTier = (subscription as any)?.subscription_plans?.tier || 'basic';
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setMediaFile(file);
-      const url = URL.createObjectURL(file);
-      setMediaPreview(url);
+    if (!file) return;
+
+    // Smart compression for images
+    if (file.type.startsWith('image/')) {
+      try {
+        const { file: compressed, stats } = await smartCompressImage(file, compressionTier);
+        setMediaFile(compressed);
+        setMediaPreview(URL.createObjectURL(compressed));
+        toast({
+          title: '🗜️ Smart Compression',
+          description: formatCompressionStats(stats),
+        });
+        return;
+      } catch {
+        // Fall back to original
+      }
     }
+
+    // Video tier check
+    if (file.type.startsWith('video/')) {
+      const check = isVideoWithinTierLimits(file, compressionTier);
+      if (!check.allowed) {
+        toast({
+          variant: 'destructive',
+          title: 'Video too large',
+          description: `Your plan allows up to ${check.maxSizeMB}MB videos. This file is ${check.fileSizeMB}MB.`,
+        });
+        return;
+      }
+    }
+
+    setMediaFile(file);
+    setMediaPreview(URL.createObjectURL(file));
   };
 
   const handleRecordingComplete = (blob: Blob, url: string) => {
     setMediaFile(new File([blob], `recording.webm`, { type: blob.type }));
     setMediaPreview(url);
     setShowRecorder(false);
+  };
+
+  const saveMemoryOffline = async () => {
+    if (!user) return;
+    
+    const memoryId = crypto.randomUUID();
+    
+    await saveOfflineMemory({
+      id: memoryId,
+      user_id: user.id,
+      memory_type: selectedType,
+      memory_date: memoryDate,
+      title: title || null,
+      content: content || null,
+      mood: detectedEmoji || null,
+      ai_analysis: aiAnalysis,
+      is_public: isPublic,
+      locked_until: lockedUntil ? new Date(lockedUntil).toISOString() : null,
+      sentiment_score: aiAnalysis?.sentiment_score ?? null,
+      emotion_category: aiAnalysis?.emotion_category ?? null,
+      people_tags: aiAnalysis?.people_tags ?? [],
+      location_data: aiAnalysis?.location_hint ? { hint: aiAnalysis.location_hint } : null,
+      event_category: aiAnalysis?.event_category ?? null,
+      privacy_level: isPublic ? 'public' : 'private',
+    });
+
+    // Save media file to IndexedDB
+    if (mediaFile) {
+      const arrayBuffer = await mediaFile.arrayBuffer();
+      await saveOfflineMedia({
+        id: crypto.randomUUID(),
+        memory_id: memoryId,
+        file_data: arrayBuffer,
+        file_name: mediaFile.name,
+        file_type: mediaFile.type,
+        file_size: mediaFile.size,
+        compression_tier: compressionTier,
+      });
+    }
+
+    toast({
+      title: '📴 Saved Offline',
+      description: 'Memory will sync automatically when you reconnect.',
+    });
+    navigate('/memories');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -134,6 +214,12 @@ export default function CreateMemory() {
         description: 'Please upgrade your plan to create more memories.',
       });
       navigate('/subscription');
+      return;
+    }
+
+    // If offline, save locally
+    if (!navigator.onLine) {
+      await saveMemoryOffline();
       return;
     }
 
@@ -223,6 +309,11 @@ export default function CreateMemory() {
       refetch();
       navigate('/memories');
     } catch (error: any) {
+      // If network error, save offline as fallback
+      if (!navigator.onLine || error.message?.includes('network') || error.message?.includes('fetch')) {
+        await saveMemoryOffline();
+        return;
+      }
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -537,6 +628,27 @@ export default function CreateMemory() {
               />
             </div>
 
+            {/* Compression Tier Info */}
+            <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30">
+              <Zap className="w-4 h-4 text-primary" />
+              <span className="text-xs text-muted-foreground">
+                Smart Compression: <span className="font-medium text-foreground capitalize">{compressionTier}</span> tier
+                {compressionTier === 'basic' && ' (720p)'}
+                {compressionTier === 'standard' && ' (1080p)'}
+                {compressionTier === 'premium' && ' (4K)'}
+              </span>
+            </div>
+
+            {/* Offline indicator */}
+            {!navigator.onLine && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
+                <WifiOff className="w-4 h-4 text-warning" />
+                <span className="text-xs text-warning-foreground">
+                  You're offline — memory will be saved locally and synced when reconnected
+                </span>
+              </div>
+            )}
+
             {/* Submit Button */}
             <div className="flex gap-4 pt-4">
               <Button
@@ -553,6 +665,7 @@ export default function CreateMemory() {
                 disabled={loading}
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {!navigator.onLine && <WifiOff className="w-4 h-4 mr-2" />}
                 {detectedEmoji ? `${t('save')} ${detectedEmoji}` : t('save')}
               </Button>
             </div>
