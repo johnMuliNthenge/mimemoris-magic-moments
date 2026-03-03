@@ -177,7 +177,7 @@ export default function CreateMemory() {
         }
       }
 
-      // Create memory record with AI-detected mood emoji
+      // Create memory record with AI-detected mood emoji and full metadata
       const insertData: any = {
         user_id: user?.id,
         memory_type: selectedType,
@@ -185,9 +185,15 @@ export default function CreateMemory() {
         title: title || null,
         content: content || null,
         media_url: mediaUrl,
-        mood: finalEmoji || detectedEmoji || null, // AI-detected emoji
+        mood: finalEmoji || detectedEmoji || null,
         ai_analysis: finalAnalysis,
         is_public: isPublic,
+        sentiment_score: finalAnalysis?.sentiment_score ?? null,
+        emotion_category: finalAnalysis?.emotion_category ?? null,
+        people_tags: finalAnalysis?.people_tags ?? [],
+        location_data: finalAnalysis?.location_hint ? { hint: finalAnalysis.location_hint } : null,
+        event_category: finalAnalysis?.event_category ?? null,
+        privacy_level: isPublic ? 'public' : 'private',
       };
       if (lockedUntil) {
         insertData.locked_until = new Date(lockedUntil).toISOString();

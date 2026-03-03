@@ -409,15 +409,21 @@ export type Database = {
           collaboration_id: string | null
           content: string | null
           created_at: string
+          emotion_category: string | null
+          event_category: string | null
           id: string
           is_from_collaboration: boolean | null
           is_public: boolean | null
           language: string | null
+          location_data: Json | null
           locked_until: string | null
           media_url: string | null
           memory_date: string
           memory_type: Database["public"]["Enums"]["memory_type"]
           mood: string | null
+          people_tags: string[] | null
+          privacy_level: string | null
+          sentiment_score: number | null
           thumbnail_url: string | null
           title: string | null
           updated_at: string
@@ -428,15 +434,21 @@ export type Database = {
           collaboration_id?: string | null
           content?: string | null
           created_at?: string
+          emotion_category?: string | null
+          event_category?: string | null
           id?: string
           is_from_collaboration?: boolean | null
           is_public?: boolean | null
           language?: string | null
+          location_data?: Json | null
           locked_until?: string | null
           media_url?: string | null
           memory_date: string
           memory_type: Database["public"]["Enums"]["memory_type"]
           mood?: string | null
+          people_tags?: string[] | null
+          privacy_level?: string | null
+          sentiment_score?: number | null
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
@@ -447,15 +459,21 @@ export type Database = {
           collaboration_id?: string | null
           content?: string | null
           created_at?: string
+          emotion_category?: string | null
+          event_category?: string | null
           id?: string
           is_from_collaboration?: boolean | null
           is_public?: boolean | null
           language?: string | null
+          location_data?: Json | null
           locked_until?: string | null
           media_url?: string | null
           memory_date?: string
           memory_type?: Database["public"]["Enums"]["memory_type"]
           mood?: string | null
+          people_tags?: string[] | null
+          privacy_level?: string | null
+          sentiment_score?: number | null
           thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
