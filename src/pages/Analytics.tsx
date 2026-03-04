@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { MoodTrendsSection } from '@/components/analytics/MoodTrendsSection';
 
 const MOOD_MAP: Record<string, { label: string; score: number; color: string }> = {
   '😊': { label: 'Happy', score: 8, color: 'hsl(48, 90%, 55%)' },
@@ -55,6 +56,9 @@ interface Memory {
   created_at: string;
   title: string | null;
   content: string | null;
+  emotion_category: string | null;
+  sentiment_score: number | null;
+  event_category: string | null;
 }
 
 export default function Analytics() {
@@ -71,7 +75,7 @@ export default function Analytics() {
   const fetchMemories = async () => {
     const { data } = await supabase
       .from('memories')
-      .select('id, memory_type, memory_date, mood, ai_analysis, created_at, title, content')
+      .select('id, memory_type, memory_date, mood, ai_analysis, created_at, title, content, emotion_category, sentiment_score, event_category')
       .eq('user_id', user!.id)
       .order('memory_date', { ascending: true });
 
@@ -579,6 +583,8 @@ export default function Analytics() {
                 </Card>
               </motion.div>
             </div>
+            {/* Mood Trends Dashboard */}
+            <MoodTrendsSection memories={memories} />
           </>
         )}
       </div>
