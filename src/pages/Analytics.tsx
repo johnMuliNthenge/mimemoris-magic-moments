@@ -56,6 +56,9 @@ interface Memory {
   created_at: string;
   title: string | null;
   content: string | null;
+  emotion_category: string | null;
+  sentiment_score: number | null;
+  event_category: string | null;
 }
 
 export default function Analytics() {
