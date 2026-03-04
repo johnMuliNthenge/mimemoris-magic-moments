@@ -66,6 +66,10 @@ export default function AdminSettings() {
           <TabsContent value="helpdesk">
             <AdminHelpdeskSetup />
           </TabsContent>
+          
+          <TabsContent value="social-import">
+            <AdminSocialImport />
+          </TabsContent>
         </Tabs>
       </div>
     </AdminLayout>
