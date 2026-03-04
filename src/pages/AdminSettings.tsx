@@ -4,8 +4,9 @@ import { AdminPayPalSetup } from '@/components/admin/AdminPayPalSetup';
 import { AdminMpesaSetup } from '@/components/admin/AdminMpesaSetup';
 import { AdminEmailSetup } from '@/components/admin/AdminEmailSetup';
 import { AdminHelpdeskSetup } from '@/components/admin/AdminHelpdeskSetup';
+import { AdminSocialImport } from '@/components/admin/AdminSocialImport';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Mail, Wallet, Smartphone, MessageCircle } from 'lucide-react';
+import { CreditCard, Mail, Wallet, Smartphone, MessageCircle, Share2 } from 'lucide-react';
 
 export default function AdminSettings() {
   return (
