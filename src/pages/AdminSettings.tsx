@@ -41,6 +41,10 @@ export default function AdminSettings() {
               <MessageCircle className="w-4 h-4" />
               Help Desk
             </TabsTrigger>
+            <TabsTrigger value="social-import" className="gap-2">
+              <Share2 className="w-4 h-4" />
+              Social Import
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="payments">
