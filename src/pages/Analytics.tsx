@@ -586,6 +586,8 @@ export default function Analytics() {
             </div>
             {/* Mood Trends Dashboard */}
             <MoodTrendsSection memories={memories} />
+            {/* Mood Period Comparison */}
+            <MoodComparisonSection memories={memories} />
           </>
         )}
       </div>
