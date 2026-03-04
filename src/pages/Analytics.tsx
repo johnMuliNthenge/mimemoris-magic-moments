@@ -583,6 +583,8 @@ export default function Analytics() {
                 </Card>
               </motion.div>
             </div>
+            {/* Mood Trends Dashboard */}
+            <MoodTrendsSection memories={memories} />
           </>
         )}
       </div>
