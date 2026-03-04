@@ -637,6 +637,38 @@ export type Database = {
           },
         ]
       }
+      plan_social_platforms: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          plan_id: string
+          platform: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          plan_id: string
+          platform: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          plan_id?: string
+          platform?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_social_platforms_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -675,6 +707,80 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Relationships: []
+      }
+      social_import_config: {
+        Row: {
+          config: Json | null
+          contact_identifier: string | null
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean | null
+          platform: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          contact_identifier?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          platform: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          contact_identifier?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          platform?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_import_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          memory_id: string | null
+          platform: string
+          source_message_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          memory_id?: string | null
+          platform: string
+          source_message_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          memory_id?: string | null
+          platform?: string
+          source_message_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_import_logs_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_plans: {
         Row: {
