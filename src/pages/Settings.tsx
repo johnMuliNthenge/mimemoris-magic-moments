@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
+import { SocialImportSettings } from '@/components/settings/SocialImportSettings';
 
 const languages = [
   { code: 'en', name: 'English' },
