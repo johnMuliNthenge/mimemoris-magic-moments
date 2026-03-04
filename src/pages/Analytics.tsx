@@ -72,7 +72,7 @@ export default function Analytics() {
   const fetchMemories = async () => {
     const { data } = await supabase
       .from('memories')
-      .select('id, memory_type, memory_date, mood, ai_analysis, created_at, title, content')
+      .select('id, memory_type, memory_date, mood, ai_analysis, created_at, title, content, emotion_category, sentiment_score, event_category')
       .eq('user_id', user!.id)
       .order('memory_date', { ascending: true });
 
