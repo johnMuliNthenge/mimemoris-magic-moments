@@ -26,6 +26,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { MoodTrendsSection } from '@/components/analytics/MoodTrendsSection';
+import { MoodComparisonSection } from '@/components/analytics/MoodComparisonSection';
 
 const MOOD_MAP: Record<string, { label: string; score: number; color: string }> = {
   '😊': { label: 'Happy', score: 8, color: 'hsl(48, 90%, 55%)' },
