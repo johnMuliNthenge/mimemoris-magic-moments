@@ -155,7 +155,7 @@ export default function Index() {
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: 0.2, duration: 0.8, ease: "easeOut" }}
               className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6"
             >
               Your Life.{' '}
