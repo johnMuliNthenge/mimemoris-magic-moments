@@ -10,11 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useRef } from 'react';
 
+const easeOut = [0.22, 1, 0.36, 1] as const;
+
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
   visible: (i: number) => ({
     opacity: 1, y: 0,
-    transition: { delay: i * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+    transition: { delay: i * 0.1, duration: 0.6, ease: easeOut as unknown as [number, number, number, number] }
   })
 };
 
@@ -22,7 +24,7 @@ const scaleIn = {
   hidden: { opacity: 0, scale: 0.8 },
   visible: (i: number) => ({
     opacity: 1, scale: 1,
-    transition: { delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+    transition: { delay: i * 0.08, duration: 0.5, ease: easeOut as unknown as [number, number, number, number] }
   })
 };
 
