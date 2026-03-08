@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Check, Loader2, CreditCard, ExternalLink, Smartphone } from 'lucide-react';
+import { Check, Loader2, CreditCard, ExternalLink, Smartphone, Ticket, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,6 +46,15 @@ export default function SubscriptionPage() {
   const [mpesaPolling, setMpesaPolling] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    coupon_id: string;
+    code: string;
+    discount_percentage: number;
+  } | null>(null);
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -72,6 +82,41 @@ export default function SubscriptionPage() {
     refetchPaymentMethods();
     setSelectedPlan(plan);
     setShowPaymentDialog(true);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('validate_coupon', { _code: couponCode.trim() }) as { data: any; error: any };
+      if (error) throw error;
+      if (!data?.valid) {
+        toast({ variant: 'destructive', title: 'Invalid Coupon', description: data?.error || 'Could not apply coupon.' });
+        setAppliedCoupon(null);
+      } else {
+        setAppliedCoupon({
+          coupon_id: data.coupon_id,
+          code: data.code,
+          discount_percentage: data.discount_percentage,
+        });
+        toast({ title: `Coupon Applied! 🎉`, description: `You get ${data.discount_percentage}% off!` });
+      }
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
+
+  const getDiscountedPrice = (price: number) => {
+    if (!appliedCoupon) return price;
+    const discounted = price * (1 - appliedCoupon.discount_percentage / 100);
+    return Math.round(discounted * 100) / 100;
   };
 
   const handleMpesaPayment = async () => {
@@ -231,6 +276,56 @@ export default function SubscriptionPage() {
           </motion.div>
         )}
 
+        {/* Coupon Code Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="max-w-md mx-auto"
+        >
+          <Card className="border-border shadow-soft">
+            <CardContent className="pt-6">
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/30">
+                  <div className="flex items-center gap-3">
+                    <Ticket className="w-5 h-5 text-success" />
+                    <div>
+                      <p className="font-semibold text-sm text-success">
+                        {appliedCoupon.code} — {appliedCoupon.discount_percentage}% OFF
+                      </p>
+                      <p className="text-xs text-muted-foreground">Discount applied to all plans</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={removeCoupon}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="font-mono uppercase"
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className="gap-2"
+                  >
+                    {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ticket className="w-4 h-4" />}
+                    Apply
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan, index) => {
             const tier = plan.tier as StripeTier;
@@ -266,8 +361,19 @@ export default function SubscriptionPage() {
                       {plan.name}
                     </CardTitle>
                     <div className={cn("mt-4", isPremium && "text-collab-foreground")}>
-                      <span className="text-4xl font-bold">${plan.price_monthly}</span>
-                      <span className="text-muted-foreground">{t('per_month')}</span>
+                      {appliedCoupon ? (
+                        <div>
+                          <span className="text-lg line-through text-muted-foreground">${plan.price_monthly}</span>
+                          <span className="text-4xl font-bold ml-2">${getDiscountedPrice(plan.price_monthly)}</span>
+                          <span className="text-muted-foreground">{t('per_month')}</span>
+                          <Badge variant="secondary" className="ml-2 text-xs">-{appliedCoupon.discount_percentage}%</Badge>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-4xl font-bold">${plan.price_monthly}</span>
+                          <span className="text-muted-foreground">{t('per_month')}</span>
+                        </>
+                      )}
                     </div>
                     <CardDescription className={cn(isPremium && "text-collab-foreground/80")}>
                       {plan.daily_memory_limit} memories per day

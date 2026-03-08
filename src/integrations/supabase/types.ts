@@ -375,6 +375,45 @@ export type Database = {
         }
         Relationships: []
       }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          discount_percentage: number
+          end_date: string
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          start_date: string
+          times_used: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_percentage: number
+          end_date: string
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          start_date: string
+          times_used?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_percentage?: number
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          start_date?: string
+          times_used?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_config: {
         Row: {
           created_at: string
@@ -1366,6 +1405,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      use_coupon: { Args: { _coupon_id: string }; Returns: undefined }
+      validate_coupon: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"
