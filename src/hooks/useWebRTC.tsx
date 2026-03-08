@@ -329,23 +329,32 @@ export function useWebRTC() {
       const receiverRemoteStream = new MediaStream();
       remoteStream.current = receiverRemoteStream;
 
-      pc.ontrack = (event) => {
-        const incomingTrack = event.track;
-
-        // Safety: ignore loopback of local tracks
+      const refreshRemoteFromReceivers = () => {
         const localTrackIds = new Set(localStream.current?.getTracks().map((t) => t.id) ?? []);
-        if (localTrackIds.has(incomingTrack.id)) {
-          console.warn('[WebRTC] Ignored loopback track:', incomingTrack.kind, incomingTrack.id);
-          return;
-        }
+        const receiverTracks = pc
+          .getReceivers()
+          .map((receiver) => receiver.track)
+          .filter((track): track is MediaStreamTrack => Boolean(track) && track.readyState === 'live')
+          .filter((track) => !localTrackIds.has(track.id));
 
-        const alreadyAdded = receiverRemoteStream.getTracks().some((t) => t.id === incomingTrack.id);
-        if (!alreadyAdded) {
-          receiverRemoteStream.addTrack(incomingTrack);
-          console.log('[WebRTC] Added remote receiver track:', incomingTrack.kind, incomingTrack.id);
-        }
+        if (receiverTracks.length === 0) return;
+
+        receiverRemoteStream.getTracks().forEach((track) => {
+          if (!receiverTracks.some((incoming) => incoming.id === track.id)) {
+            receiverRemoteStream.removeTrack(track);
+          }
+        });
+
+        receiverTracks.forEach((track) => {
+          const exists = receiverRemoteStream.getTracks().some((existing) => existing.id === track.id);
+          if (!exists) receiverRemoteStream.addTrack(track);
+        });
 
         remoteStream.current = receiverRemoteStream;
+      };
+
+      pc.ontrack = () => {
+        refreshRemoteFromReceivers();
       };
 
       pc.onicecandidate = (event) => {
