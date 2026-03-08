@@ -67,11 +67,8 @@ export function SocialImportSettings() {
 
   const fetchPlatforms = async () => {
     try {
-      // Fetch active platform configs
-      const { data: configs } = await supabase
-        .from('social_import_config')
-        .select('platform, display_name, is_active, contact_identifier')
-        .eq('is_active', true);
+      // Fetch active platform configs via secure RPC (no API keys exposed)
+      const { data: configs } = await supabase.rpc('get_active_social_platforms');
 
       if (configs) {
         setPlatforms(configs as PlatformInfo[]);
