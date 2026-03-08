@@ -44,7 +44,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav_home'), badge: 0 },
     { path: '/memories', icon: BookHeart, label: t('nav_memories'), badge: 0 },
-    { path: '/friends', icon: Users, label: t('nav_friends'), badge: incomingRequestCount },
+    { path: '/friends', icon: Users, label: t('nav_friends'), badge: friendsTabBadge },
     { path: '/analytics', icon: BarChart3, label: t('nav_analytics'), badge: 0 },
     { path: '/future-messages', icon: Mail, label: t('nav_future_messages'), badge: 0 },
     { path: '/collaborate', icon: Handshake, label: t('nav_collaborate'), badge: 0 },
