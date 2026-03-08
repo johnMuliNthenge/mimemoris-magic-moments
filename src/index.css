@@ -170,3 +170,8 @@
     50% { opacity: 0.7; }
   }
 }
+
+/* Safe area for mobile devices with notches/home indicators */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
