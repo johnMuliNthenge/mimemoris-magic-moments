@@ -315,7 +315,7 @@ export default function Dashboard() {
                       >
                         <div className="text-2xl">{memory.mood || '📝'}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{memory.title || 'Untitled Memory'}</p>
+                          <p className="font-medium truncate">{memory.title || t('untitled_memory')}</p>
                           <p className="text-sm text-muted-foreground">
                             {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
                           </p>
