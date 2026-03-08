@@ -190,15 +190,15 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
 
         {activeCall ? (
           <div className="flex flex-col items-center gap-4">
-            <p className="text-muted-foreground text-center text-sm sm:text-base">A call is active in this group</p>
-            <Badge variant="outline" className="text-sm">{activeCall.call_type === 'video' ? 'Video' : 'Audio'} Call</Badge>
+            <p className="text-muted-foreground text-center text-sm sm:text-base">{t('call_active')}</p>
+            <Badge variant="outline" className="text-sm">{activeCall.call_type === 'video' ? t('video_call') : t('audio_call')}</Badge>
             <Button
               size="lg"
               className="gap-2 bg-green-600 hover:bg-green-700 w-full sm:w-auto"
               onClick={joinCall}
             >
               <Phone className="w-5 h-5" />
-              Join Call
+              {t('join_call')}
             </Button>
           </div>
         ) : (
