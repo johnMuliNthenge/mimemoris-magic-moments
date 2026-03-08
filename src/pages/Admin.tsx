@@ -26,6 +26,10 @@ interface DashboardStats {
   totalMemories: number;
   activeSubscriptions: number;
   monthlyRevenue: number;
+  prevUsers: number;
+  prevMemories: number;
+  prevSubscriptions: number;
+  prevRevenue: number;
 }
 
 export default function AdminDashboard() {
@@ -35,6 +39,10 @@ export default function AdminDashboard() {
     totalMemories: 0,
     activeSubscriptions: 0,
     monthlyRevenue: 0,
+    prevUsers: 0,
+    prevMemories: 0,
+    prevSubscriptions: 0,
+    prevRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -55,48 +63,54 @@ export default function AdminDashboard() {
     try {
       const startStr = format(startDate, 'yyyy-MM-dd');
       const endStr = format(endDate, 'yyyy-MM-dd');
+      const rangeDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const prevStart = format(subDays(startDate, rangeDays), 'yyyy-MM-dd');
+      const prevEnd = format(subDays(startDate, 1), 'yyyy-MM-dd');
       
-      // Fetch users created in date range
-      const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', startStr)
-        .lte('created_at', endStr + 'T23:59:59');
+      // Current period
+      const [{ count: usersCount }, { count: memoriesCount }, { data: subscriptions }] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true })
+          .gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+        supabase.from('memories').select('*', { count: 'exact', head: true })
+          .gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+        supabase.from('user_subscriptions').select('*, plan:subscription_plans(price_monthly)')
+          .eq('status', 'active').gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+      ]);
 
-      // Fetch memories in date range
-      const { count: memoriesCount } = await supabase
-        .from('memories')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', startStr)
-        .lte('created_at', endStr + 'T23:59:59');
+      // Previous period
+      const [{ count: prevUsersCount }, { count: prevMemoriesCount }, { data: prevSubs }] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true })
+          .gte('created_at', prevStart).lte('created_at', prevEnd + 'T23:59:59'),
+        supabase.from('memories').select('*', { count: 'exact', head: true })
+          .gte('created_at', prevStart).lte('created_at', prevEnd + 'T23:59:59'),
+        supabase.from('user_subscriptions').select('*, plan:subscription_plans(price_monthly)')
+          .eq('status', 'active').gte('created_at', prevStart).lte('created_at', prevEnd + 'T23:59:59'),
+      ]);
 
-      // Fetch active subscriptions with plan info in date range
-      const { data: subscriptions } = await supabase
-        .from('user_subscriptions')
-        .select(`
-          *,
-          plan:subscription_plans(price_monthly)
-        `)
-        .eq('status', 'active')
-        .gte('created_at', startStr)
-        .lte('created_at', endStr + 'T23:59:59');
-
-      const activeCount = subscriptions?.length || 0;
-      const revenue = subscriptions?.reduce((sum, sub) => {
-        return sum + (sub.plan?.price_monthly || 0);
-      }, 0) || 0;
+      const revenue = subscriptions?.reduce((sum, sub) => sum + ((sub.plan as any)?.price_monthly || 0), 0) || 0;
+      const prevRevenue = prevSubs?.reduce((sum, sub) => sum + ((sub.plan as any)?.price_monthly || 0), 0) || 0;
 
       setStats({
         totalUsers: usersCount || 0,
         totalMemories: memoriesCount || 0,
-        activeSubscriptions: activeCount,
+        activeSubscriptions: subscriptions?.length || 0,
         monthlyRevenue: revenue,
+        prevUsers: prevUsersCount || 0,
+        prevMemories: prevMemoriesCount || 0,
+        prevSubscriptions: prevSubs?.length || 0,
+        prevRevenue: prevRevenue,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const calcChange = (curr: number, prev: number) => {
+    if (prev === 0) return curr > 0 ? '+100%' : '0%';
+    const pct = Math.round(((curr - prev) / prev) * 100);
+    return pct >= 0 ? `+${pct}%` : `${pct}%`;
   };
 
   const statCards = [
@@ -106,7 +120,8 @@ export default function AdminDashboard() {
       icon: Users, 
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      change: '+12%'
+      change: calcChange(stats.totalUsers, stats.prevUsers),
+      positive: stats.totalUsers >= stats.prevUsers,
     },
     { 
       label: t('total_memories'), 
@@ -114,7 +129,8 @@ export default function AdminDashboard() {
       icon: BookHeart, 
       color: 'text-accent',
       bgColor: 'bg-accent/10',
-      change: '+8%'
+      change: calcChange(stats.totalMemories, stats.prevMemories),
+      positive: stats.totalMemories >= stats.prevMemories,
     },
     { 
       label: t('active_subscriptions'), 
@@ -122,15 +138,17 @@ export default function AdminDashboard() {
       icon: CreditCard, 
       color: 'text-collab',
       bgColor: 'bg-collab/10',
-      change: '+5%'
+      change: calcChange(stats.activeSubscriptions, stats.prevSubscriptions),
+      positive: stats.activeSubscriptions >= stats.prevSubscriptions,
     },
     { 
-      label: 'Monthly Revenue', 
+      label: t('monthly_revenue'), 
       value: `$${stats.monthlyRevenue.toFixed(2)}`, 
       icon: DollarSign, 
       color: 'text-success',
       bgColor: 'bg-success/10',
-      change: '+15%'
+      change: calcChange(stats.monthlyRevenue, stats.prevRevenue),
+      positive: stats.monthlyRevenue >= stats.prevRevenue,
     },
   ];
 
@@ -164,9 +182,9 @@ export default function AdminDashboard() {
                       <p className="text-sm text-muted-foreground">{stat.label}</p>
                       <p className="text-3xl font-bold mt-2">{stat.value}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-4 h-4 text-success" />
-                        <span className="text-sm text-success">{stat.change}</span>
-                        <span className="text-xs text-muted-foreground">vs last month</span>
+                        <TrendingUp className={`w-4 h-4 ${stat.positive ? 'text-success' : 'text-destructive rotate-180'}`} />
+                        <span className={`text-sm ${stat.positive ? 'text-success' : 'text-destructive'}`}>{stat.change}</span>
+                        <span className="text-xs text-muted-foreground">{t('vs_last_month')}</span>
                       </div>
                     </div>
                     <div className={`p-3 rounded-xl ${stat.bgColor}`}>

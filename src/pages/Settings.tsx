@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { SocialImportSettings } from '@/components/settings/SocialImportSettings';
+import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 
 const languages = [
@@ -41,9 +42,27 @@ export default function SettingsPage() {
   const { preferences: notifPrefs, updatePreference: updateNotifPref, loading: notifLoading } = useNotificationPreferences();
 
   const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState(i18n.language);
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
   const [loading, setLoading] = useState(false);
+
+  // Load profile data on mount
+  useState(() => {
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setFullName(data.full_name || '');
+            setAvatarUrl(data.avatar_url);
+          }
+        });
+    }
+  });
 
   const handleLanguageChange = (lang: string) => {
     setSelectedLanguage(lang);
@@ -152,6 +171,11 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <AvatarUpload
+                currentUrl={avatarUrl}
+                fullName={fullName}
+                onUploaded={(url) => setAvatarUrl(url)}
+              />
               <div className="space-y-2">
                 <Label htmlFor="email">{t('email')}</Label>
                 <Input
