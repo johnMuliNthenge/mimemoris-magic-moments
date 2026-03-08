@@ -764,6 +764,7 @@ const resources = {
 
       ...analyticsKeys.es,
       ...timelockKeys.es,
+      ...notificationKeys.es,
     }
   },
   it: {
