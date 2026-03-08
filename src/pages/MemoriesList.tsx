@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { MemoriesView } from '@/components/memory/MemoriesView';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { signMediaFields } from '@/lib/storage-utils';
 
 interface Memory {
   id: string;

@@ -24,6 +24,7 @@ import { useFriends } from '@/hooks/useFriends';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { signMediaFields } from '@/lib/storage-utils';
 
 interface Profile {
   user_id: string;

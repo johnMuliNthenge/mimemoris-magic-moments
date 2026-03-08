@@ -9,6 +9,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { MemoriesTimeline } from '@/components/memory/MemoriesTimeline';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { signMediaFields } from '@/lib/storage-utils';
 
 interface Memory {
   id: string;
