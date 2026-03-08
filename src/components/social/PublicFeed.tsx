@@ -246,9 +246,9 @@ export function PublicFeed() {
         {memories.length === 0 ? (
           <div className="text-center py-16">
             <Globe className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-            <h3 className="text-xl font-semibold mb-2">No Public Memories</h3>
+            <h3 className="text-xl font-semibold mb-2">{t('no_public_memories')}</h3>
             <p className="text-muted-foreground">
-              Be the first to share a memory with the community!
+              {t('be_first_to_share')}
             </p>
           </div>
         ) : (
