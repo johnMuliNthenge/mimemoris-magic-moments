@@ -676,7 +676,7 @@ export function useWebRTC() {
       } catch (error) {
         console.error('[WebRTC] Failed to send reject:', error);
       } finally {
-        setTimeout(() => supabase.removeChannel(rejectChannel), 500);
+        setTimeout(() => supabase.removeChannel(rejectChannel), 2000);
       }
     };
 
