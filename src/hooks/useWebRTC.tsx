@@ -326,18 +326,24 @@ export function useWebRTC() {
   const createPeerConnection = useCallback(
     (onConnected: () => void) => {
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      remoteStream.current = new MediaStream();
+      const newRemoteStream = new MediaStream();
+      remoteStream.current = newRemoteStream;
 
       pc.ontrack = (event) => {
-        event.streams[0]?.getTracks().forEach((track) => {
-          const alreadyAdded = remoteStream.current
-            ?.getTracks()
-            .some((existingTrack) => existingTrack.id === track.id);
+        console.log('[WebRTC] ontrack fired, track kind:', event.track.kind);
+        // Add remote tracks directly
+        const track = event.track;
+        const alreadyAdded = newRemoteStream
+          .getTracks()
+          .some((t) => t.id === track.id);
 
-          if (!alreadyAdded) {
-            remoteStream.current?.addTrack(track);
-          }
-        });
+        if (!alreadyAdded) {
+          newRemoteStream.addTrack(track);
+          console.log('[WebRTC] Remote track added:', track.kind, 'total:', newRemoteStream.getTracks().length);
+        }
+
+        // Force remoteStream ref update so polling in CallWindow picks it up
+        remoteStream.current = newRemoteStream;
       };
 
       pc.onicecandidate = (event) => {
