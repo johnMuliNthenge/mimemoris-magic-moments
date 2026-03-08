@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Users, MessageCircle, Globe, UsersRound } from 'lucide-react';
+import { Users, MessageCircle, Globe, UsersRound, Video } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FriendsList } from '@/components/social/FriendsList';
 import { ChatWindow } from '@/components/social/ChatWindow';
 import { PublicFeed } from '@/components/social/PublicFeed';
 import { GroupChat } from '@/components/social/GroupChat';
+import { WhatupFeed } from '@/components/social/WhatupFeed';
 import { CreateGroupDialog } from '@/components/social/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/social/JoinGroupDialog';
 
@@ -75,10 +76,14 @@ export default function SocialPage() {
         </motion.div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="feed" className="gap-2">
               <Globe className="w-4 h-4" />
               <span className="hidden sm:inline">Feed</span>
+            </TabsTrigger>
+            <TabsTrigger value="whatup" className="gap-2">
+              <Video className="w-4 h-4" />
+              <span className="hidden sm:inline">Whatup</span>
             </TabsTrigger>
             <TabsTrigger value="friends" className="gap-2 relative">
               <Users className="w-4 h-4" />
@@ -106,6 +111,10 @@ export default function SocialPage() {
 
           <TabsContent value="feed">
             <PublicFeed />
+          </TabsContent>
+
+          <TabsContent value="whatup">
+            <WhatupFeed />
           </TabsContent>
 
           <TabsContent value="friends">
