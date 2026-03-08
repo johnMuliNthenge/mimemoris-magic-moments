@@ -290,6 +290,7 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
   };
 
   const handleSend = async () => {
+    if (!user) return;
     if (!newMessage.trim() && !selectedMedia) return;
     
     setSending(true);
