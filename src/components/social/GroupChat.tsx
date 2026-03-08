@@ -408,8 +408,11 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Invite options */}
+        <div className="flex items-center gap-1">
+          {/* Call buttons */}
+          <Button variant="ghost" size="icon" onClick={() => setShowCallWindow(true)} title="Start or join call">
+            <Phone className="w-5 h-5" />
+          </Button>
           <Dialog open={showQR} onOpenChange={setShowQR}>
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon">
