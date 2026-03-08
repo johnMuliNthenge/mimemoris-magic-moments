@@ -233,13 +233,21 @@ export function usePublicFeed() {
     return { error };
   };
 
+  const loadMore = () => {
+    const nextPage = Math.ceil(memories.length / PAGE_SIZE);
+    fetchPublicMemories(nextPage);
+  };
+
   return {
     memories,
     loading,
+    loadingMore,
+    hasMore,
     toggleLike,
     getComments,
     addComment,
     makeMemoryPublic,
-    refetch: fetchPublicMemories
+    loadMore,
+    refetch: () => fetchPublicMemories(0)
   };
 }

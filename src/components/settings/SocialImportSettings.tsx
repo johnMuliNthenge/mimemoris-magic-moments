@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Loader2, MessageCircle, Send, Twitter, Music, Facebook, Link, Copy, Check, ExternalLink, Lock, History, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, MessageCircle, Send, Twitter, Music, Facebook, Link, Copy, Check, ExternalLink, Lock, History, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
