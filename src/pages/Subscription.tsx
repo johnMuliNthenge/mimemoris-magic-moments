@@ -115,7 +115,8 @@ export default function SubscriptionPage() {
 
   const getDiscountedPrice = (price: number) => {
     if (!appliedCoupon) return price;
-    return Math.round((price * (100 - appliedCoupon.discount_percentage)) * 100) / 100 / 100;
+    const discounted = price * (1 - appliedCoupon.discount_percentage / 100);
+    return Math.round(discounted * 100) / 100;
   };
 
   const handleMpesaPayment = async () => {
