@@ -171,10 +171,10 @@ export default function Dashboard() {
         >
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">
-              Welcome back! 👋
+              {t('welcome_back')}
             </h1>
             <p className="text-muted-foreground mt-1">
-              Ready to capture today's memories?
+              {t('ready_to_capture')}
             </p>
           </div>
           <div className="flex gap-3">
