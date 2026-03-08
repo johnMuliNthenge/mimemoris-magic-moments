@@ -655,6 +655,7 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           groupId={groupId}
           groupName={currentGroup.name}
           onClose={() => setShowCallWindow(false)}
+          callHook={groupCallHook}
         />
       )}
     </div>
