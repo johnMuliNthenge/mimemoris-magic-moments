@@ -138,6 +138,7 @@ export function AdminCoupons() {
     setRedemptionsLoading(false);
   };
 
+  const createCoupon = async () => {
     if (!newCoupon.code.trim() || !newCoupon.end_date) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'Code and end date are required.' });
       return;
