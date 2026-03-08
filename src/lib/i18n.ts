@@ -851,6 +851,7 @@ const resources = {
 
       ...analyticsKeys.it,
       ...timelockKeys.it,
+      ...notificationKeys.it,
     }
   },
   sw: {
