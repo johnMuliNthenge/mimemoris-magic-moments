@@ -130,6 +130,8 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
     isMuted,
     isVideoOff,
     isScreenSharing,
+    handRaised,
+    raisedHands,
     startCall,
     joinCall,
     leaveCall,
@@ -137,6 +139,7 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
     toggleMute,
     toggleVideo,
     toggleScreenShare,
+    toggleHandRaise,
   } = callHook;
 
   const [elapsed, setElapsed] = useState(0);
