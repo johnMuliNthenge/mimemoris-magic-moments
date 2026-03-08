@@ -239,11 +239,7 @@ export default function CreateMemory() {
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from('memories')
-          .getPublicUrl(filePath);
-
-        mediaUrl = urlData.publicUrl;
+        mediaUrl = filePath;
       }
 
       // If we have media but no AI analysis yet, run it now with the media URL

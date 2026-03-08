@@ -152,11 +152,7 @@ export function CreatePost({ onPostCreated, userProfile }: CreatePostProps) {
         
         if (uploadError) throw uploadError;
         
-        const { data: { publicUrl } } = supabase.storage
-          .from('memories')
-          .getPublicUrl(fileName);
-        
-        mediaUrl = publicUrl;
+        mediaUrl = fileName;
       }
 
       // Create the memory post
