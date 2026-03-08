@@ -1,13 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Phone, Video } from 'lucide-react';
+import {
+  Send,
+  ArrowLeft,
+  Loader2,
+  Edit2,
+  Trash2,
+  X,
+  Reply,
+  Check,
+  Phone,
+  Video,
+  PhoneIncoming,
+  PhoneOutgoing,
+  Clock3,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { useChat } from '@/hooks/useChat';
-import { useWebRTC } from '@/hooks/useWebRTC';
+import { useWebRTC, type CallStatus } from '@/hooks/useWebRTC';
+import { useCallHistory } from '@/hooks/useCallHistory';
 import { CallWindow } from '@/components/social/CallWindow';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -30,13 +45,19 @@ interface MessageBubbleProps {
   index: number;
 }
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
 function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }: MessageBubbleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(msg.content);
   const [showActions, setShowActions] = useState(false);
   const x = useMotionValue(0);
   const dragThreshold = 60;
-  
+
   const replyOpacity = useTransform(x, [0, dragThreshold], [0, 1]);
   const replyScale = useTransform(x, [0, dragThreshold], [0.5, 1]);
 
@@ -59,7 +80,7 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={cn("flex", isOwn ? "justify-end" : "justify-start")}
+        className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}
       >
         <div className="max-w-[70%] rounded-2xl px-4 py-2 bg-muted/50 italic text-muted-foreground text-sm">
           Message deleted
@@ -71,10 +92,10 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
   return (
     <div className="relative">
       {/* Reply indicator */}
-      <motion.div 
+      <motion.div
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 flex items-center gap-1 text-primary",
-          isOwn ? "right-full mr-2" : "left-0"
+          'absolute top-1/2 -translate-y-1/2 flex items-center gap-1 text-primary',
+          isOwn ? 'right-full mr-2' : 'left-0'
         )}
         style={{ opacity: replyOpacity, scale: replyScale }}
       >
@@ -90,29 +111,29 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
         dragElastic={0.1}
         onDragEnd={handleDragEnd}
         style={{ x }}
-        className={cn("flex cursor-grab active:cursor-grabbing", isOwn ? "justify-end" : "justify-start")}
+        className={cn('flex cursor-grab active:cursor-grabbing', isOwn ? 'justify-end' : 'justify-start')}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
       >
         <div className="relative group">
           {/* Reply reference */}
           {msg.reply_to && (
-            <div className={cn(
-              "mb-1 px-3 py-1 rounded-lg text-xs border-l-2",
-              isOwn ? "bg-primary/20 border-primary-foreground/50" : "bg-muted/80 border-primary"
-            )}>
-              <p className="text-muted-foreground truncate max-w-[200px]">
-                {msg.reply_to.content}
-              </p>
+            <div
+              className={cn(
+                'mb-1 px-3 py-1 rounded-lg text-xs border-l-2',
+                isOwn ? 'bg-primary/20 border-primary-foreground/50' : 'bg-muted/80 border-primary'
+              )}
+            >
+              <p className="text-muted-foreground truncate max-w-[200px]">{msg.reply_to.content}</p>
             </div>
           )}
 
-          <div className={cn(
-            "max-w-[70%] rounded-2xl px-4 py-2",
-            isOwn 
-              ? "bg-primary text-primary-foreground rounded-br-sm" 
-              : "bg-muted rounded-bl-sm"
-          )}>
+          <div
+            className={cn(
+              'max-w-[70%] rounded-2xl px-4 py-2',
+              isOwn ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm'
+            )}
+          >
             {isEditing ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -135,10 +156,12 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
             ) : (
               <>
                 <p className="text-sm">{msg.content}</p>
-                <div className={cn(
-                  "flex items-center gap-1 mt-1",
-                  isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
-                )}>
+                <div
+                  className={cn(
+                    'flex items-center gap-1 mt-1',
+                    isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                  )}
+                >
                   <span className="text-xs">{format(new Date(msg.created_at), 'HH:mm')}</span>
                   {msg.edited_at && <span className="text-xs italic">(edited)</span>}
                 </div>
@@ -148,24 +171,19 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
 
           {/* Action buttons */}
           {isOwn && showActions && !isEditing && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               className="absolute -top-8 right-0 flex items-center gap-1 bg-background border border-border rounded-lg p-1 shadow-lg"
             >
               {canEdit && (
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-6 w-6"
-                  onClick={() => setIsEditing(true)}
-                >
+                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)}>
                   <Edit2 className="w-3 h-3" />
                 </Button>
               )}
-              <Button 
-                size="icon" 
-                variant="ghost" 
+              <Button
+                size="icon"
+                variant="ghost"
                 className="h-6 w-6 text-destructive hover:text-destructive"
                 onClick={() => onDelete(msg.id)}
               >
@@ -179,14 +197,14 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
   );
 }
 
-export function ChatWindow({ 
-  selectedUserId, 
-  selectedUserName, 
-  selectedUserAvatar,
-  onBack 
-}: ChatWindowProps) {
+export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvatar, onBack }: ChatWindowProps) {
   const { user } = useAuth();
-  const { messages, sendMessage, editMessage, deleteMessage, canEditMessage, loading } = useChat(selectedUserId || undefined);
+  const { messages, sendMessage, editMessage, deleteMessage, canEditMessage, loading } = useChat(
+    selectedUserId || undefined
+  );
+  const { history: callHistory, loading: callHistoryLoading, refetch: refetchCallHistory } = useCallHistory(
+    selectedUserId || undefined
+  );
   const {
     callState,
     localStream,
@@ -198,18 +216,27 @@ export function ChatWindow({
     toggleMute,
     toggleVideo,
   } = useWebRTC();
+
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const previousCallStatusRef = useRef<CallStatus>('idle');
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (previousCallStatusRef.current !== 'idle' && callState.status === 'idle') {
+      void refetchCallHistory();
+    }
+    previousCallStatusRef.current = callState.status;
+  }, [callState.status, refetchCallHistory]);
+
   const handleSend = async () => {
     if (!newMessage.trim() || !selectedUserId) return;
-    
+
     setSending(true);
     await sendMessage(selectedUserId, newMessage.trim(), replyTo?.id);
     setNewMessage('');
@@ -231,9 +258,28 @@ export function ChatWindow({
     }
   };
 
+  const callWindow = (
+    <CallWindow
+      status={callState.status}
+      type={callState.type}
+      remoteUserName={callState.remoteUserName || selectedUserName}
+      remoteUserAvatar={callState.remoteUserAvatar || selectedUserAvatar}
+      isIncoming={callState.isIncoming}
+      duration={callState.duration}
+      localStream={localStream}
+      remoteStream={remoteStream}
+      onAccept={acceptCall}
+      onReject={rejectCall}
+      onEnd={endCall}
+      onToggleMute={toggleMute}
+      onToggleVideo={toggleVideo}
+    />
+  );
+
   if (!selectedUserId) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
+        {callWindow}
         <p>Select a conversation to start chatting</p>
       </div>
     );
@@ -241,6 +287,8 @@ export function ChatWindow({
 
   return (
     <div className="flex flex-col h-full">
+      {callWindow}
+
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border">
         {onBack && (
@@ -250,9 +298,7 @@ export function ChatWindow({
         )}
         <Avatar className="w-10 h-10">
           <AvatarImage src={selectedUserAvatar || undefined} />
-          <AvatarFallback className="bg-primary/10 text-primary">
-            {selectedUserName?.[0] || 'U'}
-          </AvatarFallback>
+          <AvatarFallback className="bg-primary/10 text-primary">{selectedUserName?.[0] || 'U'}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
           <p className="font-medium">{selectedUserName || 'Unknown User'}</p>
@@ -263,7 +309,7 @@ export function ChatWindow({
             variant="ghost"
             size="icon"
             className="text-muted-foreground hover:text-primary"
-            onClick={() => initiateCall(selectedUserId!, 'audio', selectedUserName, selectedUserAvatar)}
+            onClick={() => initiateCall(selectedUserId, 'audio', selectedUserName, selectedUserAvatar)}
             title="Audio call"
           >
             <Phone className="w-5 h-5" />
@@ -272,7 +318,7 @@ export function ChatWindow({
             variant="ghost"
             size="icon"
             className="text-muted-foreground hover:text-primary"
-            onClick={() => initiateCall(selectedUserId!, 'video', selectedUserName, selectedUserAvatar)}
+            onClick={() => initiateCall(selectedUserId, 'video', selectedUserName, selectedUserAvatar)}
             title="Video call"
           >
             <Video className="w-5 h-5" />
@@ -280,22 +326,61 @@ export function ChatWindow({
         </div>
       </div>
 
-      {/* Call Window */}
-      <CallWindow
-        status={callState.status}
-        type={callState.type}
-        remoteUserName={callState.remoteUserName || selectedUserName}
-        remoteUserAvatar={callState.remoteUserAvatar || selectedUserAvatar}
-        isIncoming={callState.isIncoming}
-        duration={callState.duration}
-        localStream={localStream}
-        remoteStream={remoteStream}
-        onAccept={acceptCall}
-        onReject={rejectCall}
-        onEnd={endCall}
-        onToggleMute={toggleMute}
-        onToggleVideo={toggleVideo}
-      />
+      {/* Call History */}
+      <div className="px-4 py-2 border-b border-border bg-muted/20">
+        <p className="text-xs font-medium text-muted-foreground mb-2">Recent calls</p>
+
+        {callHistoryLoading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Loading call history...
+          </div>
+        ) : callHistory.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No calls yet with this user.</p>
+        ) : (
+          <div className="space-y-1">
+            {callHistory.slice(0, 4).map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center justify-between rounded-md bg-background px-2.5 py-1.5 border border-border"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {entry.direction === 'incoming' ? (
+                    <PhoneIncoming className="w-3.5 h-3.5 text-muted-foreground" />
+                  ) : (
+                    <PhoneOutgoing className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
+                  <p className="text-xs truncate">
+                    <span className="font-medium capitalize">{entry.call_type}</span>
+                    <span className="text-muted-foreground"> · {entry.direction}</span>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={cn(
+                      'text-[11px] font-medium capitalize',
+                      entry.status === 'completed' || entry.status === 'connected'
+                        ? 'text-success'
+                        : entry.status === 'ringing'
+                          ? 'text-warning'
+                          : 'text-destructive'
+                    )}
+                  >
+                    {entry.status}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <Clock3 className="w-3 h-3" />
+                    {entry.duration_seconds > 0
+                      ? formatDuration(entry.duration_seconds)
+                      : format(new Date(entry.started_at), 'MMM d')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
@@ -332,9 +417,7 @@ export function ChatWindow({
         <div className="px-4 py-2 border-t border-border bg-muted/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Reply className="w-4 h-4 text-primary" />
-            <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-              {replyTo.content}
-            </p>
+            <p className="text-sm text-muted-foreground truncate max-w-[200px]">{replyTo.content}</p>
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyTo(null)}>
             <X className="w-4 h-4" />
@@ -353,11 +436,7 @@ export function ChatWindow({
             disabled={sending}
           />
           <Button onClick={handleSend} disabled={sending || !newMessage.trim()}>
-            {sending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
       </div>
