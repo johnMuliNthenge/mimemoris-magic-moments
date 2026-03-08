@@ -30,7 +30,7 @@ export default function SocialPage() {
     avatar?: string;
   } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [showCallHistory, setShowCallHistory] = useState(false);
+  
   
   const { conversations } = useChat();
   const { friends, pendingRequests } = useFriends();
