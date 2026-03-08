@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { SocialImportSettings } from '@/components/settings/SocialImportSettings';
+import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 
 const languages = [
