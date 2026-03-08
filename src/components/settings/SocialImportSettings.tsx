@@ -136,10 +136,20 @@ export function SocialImportSettings() {
           Social Memory Import
         </CardTitle>
         <CardDescription>
-          Capture memories directly from your social media platforms. Send messages to the contacts below and they'll automatically be saved as your memories.
+          Capture memories directly from your social media platforms.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
+        <Tabs defaultValue="platforms" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="platforms">Platforms</TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5">
+              <History className="w-3.5 h-3.5" />
+              Import History
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="platforms" className="space-y-4">
         {platforms.map((platform) => {
           const Icon = PLATFORM_ICONS[platform.platform] || MessageCircle;
           const colorClass = PLATFORM_COLORS[platform.platform] || 'text-foreground';
