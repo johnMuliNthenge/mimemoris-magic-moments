@@ -251,8 +251,10 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showCallWindow, setShowCallWindow] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { activeCall } = useGroupCall(groupId);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
