@@ -166,16 +166,13 @@ export default function SocialPage() {
 
               {/* Chat window or Call History */}
               <div className="md:col-span-2 border border-border rounded-lg overflow-hidden">
-                {showCallHistory ? (
-                  <CallHistoryPanel onBack={() => setShowCallHistory(false)} />
-                ) : (
-                  <ChatWindow
-                    selectedUserId={selectedChatUser?.id || null}
-                    selectedUserName={selectedChatUser?.name}
-                    selectedUserAvatar={selectedChatUser?.avatar}
-                    onBack={() => setSelectedChatUser(null)}
-                  />
-                )}
+                <ChatWindow
+                  selectedUserId={selectedChatUser?.id || null}
+                  selectedUserName={selectedChatUser?.name}
+                  selectedUserAvatar={selectedChatUser?.avatar}
+                  onBack={() => setSelectedChatUser(null)}
+                />
+              </div>
               </div>
             </div>
           </TabsContent>
