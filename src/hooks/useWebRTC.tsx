@@ -597,7 +597,7 @@ export function useWebRTC() {
     if (!callStateRef.current.remoteUserId || !user?.id) return;
 
     const remoteUserId = callStateRef.current.remoteUserId;
-    const callType = callStateRef.current.type;
+    const initialCallType = callStateRef.current.type;
 
     try {
       if (
@@ -605,22 +605,16 @@ export function useWebRTC() {
         activeCallLog.current.direction !== 'incoming' ||
         activeCallLog.current.peerUserId !== remoteUserId
       ) {
-        await beginCallHistory(remoteUserId, 'incoming', callType);
+        await beginCallHistory(remoteUserId, 'incoming', initialCallType);
       }
 
       pendingCandidates.current = [];
-
-      const { stream, resolvedType } = await getMedia(callType);
-      if (resolvedType !== callType) {
-        setCallState((prev) => ({ ...prev, type: resolvedType }));
-      }
 
       const pc = createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
         markCallConnected();
         startDurationTimer();
       });
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       const channelName = getChannelName(remoteUserId);
       const channel = supabase.channel(channelName, {
@@ -632,6 +626,23 @@ export function useWebRTC() {
 
         try {
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
+
+          if (!localStream.current) {
+            const { stream, resolvedType } = await getMedia(initialCallType);
+            if (resolvedType !== initialCallType) {
+              setCallState((prev) => ({ ...prev, type: resolvedType }));
+            }
+
+            stream.getTracks().forEach((track) => {
+              const alreadySending = peerConnection.current
+                ?.getSenders()
+                .some((sender) => sender.track?.id === track.id);
+
+              if (!alreadySending) {
+                peerConnection.current?.addTrack(track, stream);
+              }
+            });
+          }
 
           for (const candidate of pendingCandidates.current) {
             await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -684,6 +695,7 @@ export function useWebRTC() {
 
       await sendSignal(channel, 'ready-for-offer', { from: user.id });
       setCallState((prev) => ({ ...prev, status: 'calling', isIncoming: false }));
+      void pc;
     } catch (error) {
       console.error('[WebRTC] Failed to accept call:', error);
       cleanup('failed');
