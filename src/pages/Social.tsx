@@ -81,9 +81,9 @@ export default function SocialPage() {
               <Globe className="w-4 h-4" />
               <span className="hidden sm:inline">Feed</span>
             </TabsTrigger>
-            <TabsTrigger value="whatup" className="gap-2">
+            <TabsTrigger value="trending" className="gap-2">
               <Video className="w-4 h-4" />
-              <span className="hidden sm:inline">Whatup</span>
+              <span className="hidden sm:inline">Trending</span>
             </TabsTrigger>
             <TabsTrigger value="friends" className="gap-2 relative">
               <Users className="w-4 h-4" />
@@ -113,7 +113,7 @@ export default function SocialPage() {
             <PublicFeed />
           </TabsContent>
 
-          <TabsContent value="whatup">
+          <TabsContent value="trending">
             <WhatupFeed />
           </TabsContent>
 

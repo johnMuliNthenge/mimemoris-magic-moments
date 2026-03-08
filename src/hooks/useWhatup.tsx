@@ -160,7 +160,7 @@ export function useWhatup() {
               from_user_id: user.id,
               type: 'whatup_mention',
               reference_id: postId,
-              content: `tagged you in a Whatup comment`,
+              content: `tagged you in a Trending comment`,
             }));
 
           if (notifications.length > 0) {

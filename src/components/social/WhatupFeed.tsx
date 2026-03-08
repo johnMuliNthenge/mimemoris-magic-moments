@@ -97,7 +97,7 @@ export function WhatupFeed() {
     setUploading(true);
     try {
       const fileExt = videoFile.name.split('.').pop();
-      const fileName = `whatup/${user.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/trending-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('memories')
@@ -113,7 +113,7 @@ export function WhatupFeed() {
 
       if (error) throw error;
 
-      toast({ title: 'Posted!', description: 'Your Whatup video is live' });
+      toast({ title: 'Posted!', description: 'Your Trending video is live' });
       clearVideo();
       refetch();
     } catch (err: any) {
@@ -183,11 +183,11 @@ export function WhatupFeed() {
 
   const handleShare = async (post: any) => {
     const shareUrl = `https://mimemora.lovable.app/friends`;
-    const shareText = post.caption || 'Check out this Whatup video on Mimemora!';
+    const shareText = post.caption || 'Check out this Trending video on Mimemora!';
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Mimemora Whatup', text: shareText, url: shareUrl });
+        await navigator.share({ title: 'Mimemora Trending', text: shareText, url: shareUrl });
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           await navigator.clipboard.writeText(shareUrl);
@@ -245,7 +245,7 @@ export function WhatupFeed() {
                   >
                     <Upload className="w-6 h-6 text-muted-foreground" />
                     <div className="text-center">
-                      <p className="font-medium">Upload a Whatup Video</p>
+                      <p className="font-medium">Upload a Trending Video</p>
                       <p className="text-xs text-muted-foreground">Up to {MAX_VIDEO_DURATION} seconds</p>
                     </div>
                   </Button>
@@ -275,7 +275,7 @@ export function WhatupFeed() {
                   <div className="flex justify-end">
                     <Button onClick={handlePost} disabled={uploading} className="gradient-warm text-primary-foreground">
                       {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Video className="w-4 h-4 mr-1" />}
-                      {uploading ? 'Posting...' : 'Post Whatup'}
+                      {uploading ? 'Posting...' : 'Post Video'}
                     </Button>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export function WhatupFeed() {
         {posts.length === 0 ? (
           <div className="text-center py-16">
             <Video className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-            <h3 className="text-xl font-semibold mb-2">No Whatup Videos Yet</h3>
+            <h3 className="text-xl font-semibold mb-2">No Trending Videos Yet</h3>
             <p className="text-muted-foreground">Be the first to share a short video!</p>
           </div>
         ) : (
@@ -314,7 +314,7 @@ export function WhatupFeed() {
                     </p>
                   </div>
                   <Badge variant="secondary" className="gap-1">
-                    <Video className="w-3 h-3" /> Whatup
+                    <Video className="w-3 h-3" /> Trending
                   </Badge>
                 </CardHeader>
 
