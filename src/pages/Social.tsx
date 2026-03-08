@@ -173,7 +173,6 @@ export default function SocialPage() {
                   onBack={() => setSelectedChatUser(null)}
                 />
               </div>
-              </div>
             </div>
           </TabsContent>
 
