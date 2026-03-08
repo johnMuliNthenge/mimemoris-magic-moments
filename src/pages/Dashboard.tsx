@@ -330,7 +330,7 @@ export default function Dashboard() {
                       className="w-full"
                       onClick={() => navigate('/memories/list')}
                     >
-                      View all memories →
+                      {t('view_all_memories')}
                     </Button>
                   </>
                 )}
