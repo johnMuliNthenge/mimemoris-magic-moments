@@ -1079,6 +1079,7 @@ export type Database = {
           created_at: string
           id: string
           post_id: string
+          reply_to_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1087,6 +1088,7 @@ export type Database = {
           created_at?: string
           id?: string
           post_id: string
+          reply_to_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1095,6 +1097,7 @@ export type Database = {
           created_at?: string
           id?: string
           post_id?: string
+          reply_to_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1104,6 +1107,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "whatup_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatup_comments_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "whatup_comments"
             referencedColumns: ["id"]
           },
         ]
