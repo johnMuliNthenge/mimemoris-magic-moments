@@ -100,7 +100,44 @@ export function AdminCoupons() {
     setLoading(false);
   };
 
-  const createCoupon = async () => {
+  const fetchRedemptions = async () => {
+    setRedemptionsLoading(true);
+    const { data, error } = await supabase
+      .from('coupon_redemptions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      // Enrich with coupon codes, user profiles, and plan names
+      const couponIds = [...new Set(data.map(r => r.coupon_id))];
+      const userIds = [...new Set(data.map(r => r.user_id))];
+      const planIds = [...new Set(data.map(r => r.plan_id).filter(Boolean))];
+
+      const [couponsRes, profilesRes, plansRes] = await Promise.all([
+        couponIds.length > 0
+          ? supabase.from('coupons').select('id, code').in('id', couponIds)
+          : { data: [] },
+        userIds.length > 0
+          ? supabase.from('profiles').select('user_id, full_name').in('user_id', userIds)
+          : { data: [] },
+        planIds.length > 0
+          ? supabase.from('subscription_plans').select('id, name').in('id', planIds as string[])
+          : { data: [] },
+      ]);
+
+      const enriched = data.map(r => ({
+        ...r,
+        coupon_code: (couponsRes.data as any[])?.find(c => c.id === r.coupon_id)?.code || 'Unknown',
+        user_name: (profilesRes.data as any[])?.find(p => p.user_id === r.user_id)?.full_name || 'Unknown User',
+        plan_name: r.plan_id ? (plansRes.data as any[])?.find(p => p.id === r.plan_id)?.name || 'Unknown' : '—',
+      })) as Redemption[];
+
+      setRedemptions(enriched);
+    }
+    setRedemptionsLoading(false);
+  };
+
     if (!newCoupon.code.trim() || !newCoupon.end_date) {
       toast({ variant: 'destructive', title: 'Missing Fields', description: 'Code and end date are required.' });
       return;
