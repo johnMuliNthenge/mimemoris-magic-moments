@@ -196,23 +196,14 @@ export default function CollaboratePage() {
     setLoading(true);
 
     try {
-      // Use secure RPC that validates OTP server-side
-      const { error } = await supabase.rpc('join_collaboration_with_otp', {
-        _collaboration_id: '', // We need to find by OTP first
+      // Find session by OTP using secure RPC (doesn't expose OTP in response)
+      const { data: sessions, error: findError } = await supabase.rpc('find_collaboration_by_otp', {
         _otp_code: otpCode,
       });
 
-      // Since the RPC needs a collaboration_id, let's find it first via a secure approach
-      // The host SELECT policy won't work for joiners, so we use the OTP-based function
-      // We need to adjust: find session by OTP using a secure function
-      const { data: session } = await supabase
-        .from('collaboration_sessions')
-        .select('*')
-        .eq('otp_code', otpCode)
-        .eq('is_active', true)
-        .gt('otp_expires_at', new Date().toISOString())
-        .maybeSingle();
+      if (findError) throw findError;
 
+      const session = sessions?.[0];
       if (!session) {
         toast({
           variant: 'destructive',
@@ -223,7 +214,7 @@ export default function CollaboratePage() {
         return;
       }
 
-      // Use the secure join RPC
+      // Join using secure RPC that validates OTP server-side
       const { error: joinError } = await supabase.rpc('join_collaboration_with_otp', {
         _collaboration_id: session.id,
         _otp_code: otpCode,
