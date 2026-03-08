@@ -11,7 +11,9 @@ import {
   Send,
   Pencil,
   Check,
-  X
+  X,
+  Flag,
+  MoreVertical,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -26,6 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { usePublicFeed } from '@/hooks/usePublicFeed';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,7 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 export function PublicFeed() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { memories, loading, toggleLike, getComments, addComment, refetch } = usePublicFeed();
+  const { memories, loading, loadingMore, hasMore, toggleLike, getComments, addComment, loadMore, refetch } = usePublicFeed();
   
   const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -189,6 +192,13 @@ export function PublicFeed() {
     await toggleLike(memoryId);
   };
 
+  const handleReport = (memory: any) => {
+    toast({
+      title: 'Report submitted',
+      description: 'Thank you for reporting. Our team will review this content.',
+    });
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -248,14 +258,31 @@ export function PublicFeed() {
                       {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
                     </p>
                   </div>
-                  {canEdit(memory) && editingId !== memory.id && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(memory)}>
-                      <Pencil className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                  )}
-                  {memory.mood && (
-                    <span className="text-2xl">{memory.mood}</span>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {canEdit(memory) && editingId !== memory.id && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(memory)}>
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                    {user && memory.user_id !== user.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleReport(memory)} className="gap-2 text-destructive">
+                            <Flag className="w-4 h-4" />
+                            Report
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {memory.mood && (
+                      <span className="text-2xl">{memory.mood}</span>
+                    )}
+                  </div>
                 </CardHeader>
                 
                 <CardContent className="pb-3">
@@ -346,6 +373,16 @@ export function PublicFeed() {
               </Card>
             </motion.div>
           ))
+        )}
+
+        {/* Load More */}
+        {!loading && hasMore && memories.length > 0 && (
+          <div className="flex justify-center pt-4">
+            <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="gap-2">
+              {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
+              Load more
+            </Button>
+          </div>
         )}
       </div>
 

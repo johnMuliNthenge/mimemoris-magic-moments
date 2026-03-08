@@ -38,24 +38,36 @@ export function usePublicFeed() {
   const { user } = useAuth();
   const [memories, setMemories] = useState<PublicMemory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
-    fetchPublicMemories();
+    fetchPublicMemories(0);
     subscribeToChanges();
   }, [user]);
 
-  const fetchPublicMemories = async () => {
+  const fetchPublicMemories = async (page: number) => {
+    if (page === 0) setLoading(true);
+    else setLoadingMore(true);
+
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
     const { data: memoriesData } = await supabase
       .from('memories')
       .select('*')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .range(from, to);
 
     if (!memoriesData) {
       setLoading(false);
+      setLoadingMore(false);
       return;
     }
+
+    setHasMore(memoriesData.length === PAGE_SIZE);
 
     const signedMemoriesData = await signMediaFields(memoriesData, ['media_url']);
 
@@ -97,8 +109,13 @@ export function usePublicFeed() {
       };
     });
 
-    setMemories(memoriesWithInfo);
+    if (page === 0) {
+      setMemories(memoriesWithInfo);
+    } else {
+      setMemories(prev => [...prev, ...memoriesWithInfo]);
+    }
     setLoading(false);
+    setLoadingMore(false);
   };
 
   const subscribeToChanges = () => {
@@ -108,12 +125,12 @@ export function usePublicFeed() {
         event: '*',
         schema: 'public',
         table: 'memory_likes'
-      }, () => fetchPublicMemories())
+      }, () => fetchPublicMemories(0))
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'memory_comments'
-      }, () => fetchPublicMemories())
+      }, () => fetchPublicMemories(0))
       .subscribe();
 
     return () => {
@@ -212,17 +229,25 @@ export function usePublicFeed() {
       .update({ is_public: isPublic })
       .eq('id', memoryId);
 
-    if (!error) fetchPublicMemories();
+    if (!error) fetchPublicMemories(0);
     return { error };
+  };
+
+  const loadMore = () => {
+    const nextPage = Math.ceil(memories.length / PAGE_SIZE);
+    fetchPublicMemories(nextPage);
   };
 
   return {
     memories,
     loading,
+    loadingMore,
+    hasMore,
     toggleLike,
     getComments,
     addComment,
     makeMemoryPublic,
-    refetch: fetchPublicMemories
+    loadMore,
+    refetch: () => fetchPublicMemories(0)
   };
 }

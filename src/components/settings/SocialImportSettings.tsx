@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Loader2, MessageCircle, Send, Twitter, Music, Facebook, Link, Copy, Check, ExternalLink, Lock, History, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, MessageCircle, Send, Twitter, Music, Facebook, Link, Copy, Check, ExternalLink, Lock, History, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -255,22 +255,63 @@ export function SocialImportSettings() {
 
 function ImportHistoryTab() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
-    if (user) fetchLogs();
+    if (user) fetchLogs(0);
   }, [user]);
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (pageNum: number) => {
+    setLoading(pageNum === 0);
     const { data } = await supabase
       .from('social_import_logs')
       .select('*')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false })
-      .limit(50);
-    setLogs(data || []);
+      .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+
+    const fetched = data || [];
+    if (pageNum === 0) {
+      setLogs(fetched);
+    } else {
+      setLogs(prev => [...prev, ...fetched]);
+    }
+    setHasMore(fetched.length === PAGE_SIZE);
+    setPage(pageNum);
     setLoading(false);
+  };
+
+  const loadMore = () => fetchLogs(page + 1);
+
+  const retryImport = async (log: any) => {
+    setRetrying(log.id);
+    try {
+      // Reset the failed log entry to pending
+      await supabase
+        .from('social_import_logs')
+        .update({ status: 'pending', error_message: null })
+        .eq('id', log.id);
+
+      // Re-invoke the webhook to retry processing
+      const functionName = log.platform === 'whatsapp' ? 'whatsapp-import-webhook' : 'telegram-import-webhook';
+      await supabase.functions.invoke(functionName, {
+        body: { retry: true, log_id: log.id, user_id: log.user_id, source_message_id: log.source_message_id },
+      });
+
+      toast({ title: 'Retry initiated', description: `Re-processing ${log.platform} import...` });
+      // Refresh logs after short delay
+      setTimeout(() => fetchLogs(0), 2000);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Retry failed', description: 'Could not retry this import.' });
+    } finally {
+      setRetrying(null);
+    }
   };
 
   if (loading) {
@@ -292,32 +333,57 @@ function ImportHistoryTab() {
   }
 
   return (
-    <div className="space-y-2 max-h-80 overflow-y-auto">
-      {logs.map(log => (
-        <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-          <div className={cn(
-            'p-1.5 rounded-full',
-            log.status === 'success' ? 'bg-success/10' : log.status === 'failed' ? 'bg-destructive/10' : 'bg-muted'
-          )}>
-            {log.status === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-success" />
-            ) : log.status === 'failed' ? (
-              <AlertCircle className="w-4 h-4 text-destructive" />
-            ) : (
-              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
-            )}
+    <div className="space-y-2">
+      <div className="space-y-2 max-h-80 overflow-y-auto">
+        {logs.map(log => (
+          <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
+            <div className={cn(
+              'p-1.5 rounded-full',
+              log.status === 'success' ? 'bg-green-500/10' : log.status === 'failed' ? 'bg-destructive/10' : 'bg-muted'
+            )}>
+              {log.status === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+              ) : log.status === 'failed' ? (
+                <AlertCircle className="w-4 h-4 text-destructive" />
+              ) : (
+                <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium capitalize">{log.platform}</p>
+              {log.error_message && (
+                <p className="text-xs text-destructive truncate">{log.error_message}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {log.status === 'failed' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1"
+                  disabled={retrying === log.id}
+                  onClick={() => retryImport(log)}
+                >
+                  {retrying === log.id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
+                  Retry
+                </Button>
+              )}
+              <Badge variant="outline" className="text-xs">
+                {format(parseISO(log.created_at), 'MMM d, HH:mm')}
+              </Badge>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium capitalize">{log.platform}</p>
-            {log.error_message && (
-              <p className="text-xs text-destructive truncate">{log.error_message}</p>
-            )}
-          </div>
-          <Badge variant="outline" className="text-xs shrink-0">
-            {format(parseISO(log.created_at), 'MMM d, HH:mm')}
-          </Badge>
-        </div>
-      ))}
+        ))}
+      </div>
+      {hasMore && (
+        <Button variant="outline" size="sm" className="w-full" onClick={loadMore}>
+          Load more
+        </Button>
+      )}
     </div>
   );
 }

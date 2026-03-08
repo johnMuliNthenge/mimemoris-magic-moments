@@ -585,13 +585,27 @@ export function useGroupCall(groupId: string) {
         stopScreenShare();
       };
 
-      peersRef.current.forEach((pc, peerId) => {
+      // Replace the video track on all peers and renegotiate
+      for (const [peerId, pc] of peersRef.current.entries()) {
         const videoSender = pc.getSenders().find(s => s.track?.kind === 'video');
         if (videoSender) {
-          videoSender.replaceTrack(screenTrack);
+          await videoSender.replaceTrack(screenTrack);
           screenSendersRef.current.set(peerId, videoSender);
         }
-      });
+
+        // Renegotiate so the remote peer picks up the new track
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          signalingChannelRef.current?.send({
+            type: 'broadcast',
+            event: 'renegotiate-offer',
+            payload: { from: user!.id, to: peerId, sdp: offer }
+          });
+        } catch (e) {
+          console.warn('[GroupCall] Renegotiation failed for screen share:', e);
+        }
+      }
 
       signalingChannelRef.current?.send({
         type: 'broadcast',
@@ -603,7 +617,7 @@ export function useGroupCall(groupId: string) {
     }
   };
 
-  const stopScreenShare = () => {
+  const stopScreenShare = async () => {
     screenStreamRef.current?.getTracks().forEach(t => t.stop());
     screenStreamRef.current = null;
     setScreenStream(null);
@@ -611,9 +625,24 @@ export function useGroupCall(groupId: string) {
 
     const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
     if (cameraTrack) {
-      screenSendersRef.current.forEach((sender) => {
-        sender.replaceTrack(cameraTrack);
-      });
+      for (const [peerId, sender] of screenSendersRef.current.entries()) {
+        await sender.replaceTrack(cameraTrack);
+        // Renegotiate back to camera
+        const pc = peersRef.current.get(peerId);
+        if (pc) {
+          try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            signalingChannelRef.current?.send({
+              type: 'broadcast',
+              event: 'renegotiate-offer',
+              payload: { from: user!.id, to: peerId, sdp: offer }
+            });
+          } catch (e) {
+            console.warn('[GroupCall] Renegotiation failed stopping screen share:', e);
+          }
+        }
+      }
     }
     screenSendersRef.current.clear();
 
