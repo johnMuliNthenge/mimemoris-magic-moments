@@ -125,12 +125,12 @@ export function usePublicFeed() {
         event: '*',
         schema: 'public',
         table: 'memory_likes'
-      }, () => fetchPublicMemories())
+      }, () => fetchPublicMemories(0))
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'memory_comments'
-      }, () => fetchPublicMemories())
+      }, () => fetchPublicMemories(0))
       .subscribe();
 
     return () => {
