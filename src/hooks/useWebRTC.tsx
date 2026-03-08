@@ -172,7 +172,7 @@ export function useWebRTC() {
 
       activeCallLog.current = localLog;
 
-      const { data, error } = await supabase
+      const { data, error } = (await supabase
         .from('call_history' as any)
         .insert({
           user_id: user.id,
@@ -184,7 +184,7 @@ export function useWebRTC() {
           duration_seconds: 0,
         })
         .select('id')
-        .single();
+        .single()) as { data: { id: string } | null; error: any };
 
       if (error) {
         console.error('[WebRTC] Failed creating call history:', error);

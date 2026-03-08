@@ -26,13 +26,13 @@ export function useCallHistory(peerUserId?: string) {
 
     setLoading(true);
 
-    const { data, error } = await supabase
+    const { data, error } = (await supabase
       .from('call_history' as any)
       .select('id, peer_user_id, direction, call_type, status, started_at, ended_at, duration_seconds')
       .eq('user_id', user.id)
       .eq('peer_user_id', peerUserId)
       .order('started_at', { ascending: false })
-      .limit(10);
+      .limit(10)) as { data: CallHistoryItem[] | null; error: any };
 
     if (error) {
       console.error('[CallHistory] Failed loading history:', error);
@@ -41,7 +41,7 @@ export function useCallHistory(peerUserId?: string) {
       return;
     }
 
-    setHistory((data ?? []) as CallHistoryItem[]);
+    setHistory(data ?? []);
     setLoading(false);
   }, [peerUserId, user?.id]);
 
