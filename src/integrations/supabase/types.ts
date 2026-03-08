@@ -35,6 +35,48 @@ export type Database = {
         }
         Relationships: []
       }
+      call_history: {
+        Row: {
+          call_type: string
+          created_at: string
+          direction: string
+          duration_seconds: number
+          ended_at: string | null
+          id: string
+          peer_user_id: string
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          call_type: string
+          created_at?: string
+          direction: string
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          peer_user_id: string
+          started_at?: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          call_type?: string
+          created_at?: string
+          direction?: string
+          duration_seconds?: number
+          ended_at?: string | null
+          id?: string
+          peer_user_id?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_group_members: {
         Row: {
           group_id: string
