@@ -352,6 +352,15 @@ export function useGroupCall(groupId: string) {
             removePeer(payload.userId);
           }
         })
+        .on('broadcast', { event: 'hand-raise' }, ({ payload }) => {
+          if (payload.userId === user!.id) return;
+          setRaisedHands(prev => {
+            const next = new Set(prev);
+            if (payload.raised) next.add(payload.userId);
+            else next.delete(payload.userId);
+            return next;
+          });
+        })
         .on('broadcast', { event: 'renegotiate-offer' }, async ({ payload }) => {
           if (payload.to !== user!.id) return;
           console.log(`[GroupCall] Received renegotiate offer from ${payload.from}`);
