@@ -362,8 +362,7 @@ export function useWebRTC() {
         }
 
         if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-          if (disconnectTimeout.current) clearTimeout(disconnectTimeout.current);
-
+          // Just attempt ICE restart, never auto-disconnect — user must end call manually
           if (pc.connectionState === 'failed') {
             try {
               pc.restartIce();
@@ -371,12 +370,6 @@ export function useWebRTC() {
               console.error('[WebRTC] ICE restart on failed state error:', error);
             }
           }
-
-          disconnectTimeout.current = setTimeout(() => {
-            if (peerConnection.current !== pc) return;
-            if (pc.connectionState === 'connected') return;
-            cleanup('failed');
-          }, DISCONNECT_GRACE_MS);
           return;
         }
       };
