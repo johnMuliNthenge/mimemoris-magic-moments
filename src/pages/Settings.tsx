@@ -116,7 +116,7 @@ export default function SettingsPage() {
         >
           <h1 className="font-display text-3xl font-bold mb-2">{t('nav_settings')}</h1>
           <p className="text-muted-foreground">
-            Manage your account and preferences
+            {t('manage_preferences')}
           </p>
         </motion.div>
 
