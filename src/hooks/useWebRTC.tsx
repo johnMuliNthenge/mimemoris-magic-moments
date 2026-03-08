@@ -516,7 +516,7 @@ export function useWebRTC() {
 
         await sendIncomingNotification(remoteUserId, 'incoming-call', {
           from: user.id,
-          callType,
+          callType: resolvedType,
           callerName: user.user_metadata?.full_name || 'Unknown',
           callerAvatar: user.user_metadata?.avatar_url || undefined,
         });
