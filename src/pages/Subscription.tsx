@@ -275,6 +275,56 @@ export default function SubscriptionPage() {
           </motion.div>
         )}
 
+        {/* Coupon Code Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="max-w-md mx-auto"
+        >
+          <Card className="border-border shadow-soft">
+            <CardContent className="pt-6">
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-success/10 border border-success/30">
+                  <div className="flex items-center gap-3">
+                    <Ticket className="w-5 h-5 text-success" />
+                    <div>
+                      <p className="font-semibold text-sm text-success">
+                        {appliedCoupon.code} — {appliedCoupon.discount_percentage}% OFF
+                      </p>
+                      <p className="text-xs text-muted-foreground">Discount applied to all plans</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={removeCoupon}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="font-mono uppercase"
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className="gap-2"
+                  >
+                    {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ticket className="w-4 h-4" />}
+                    Apply
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan, index) => {
             const tier = plan.tier as StripeTier;
