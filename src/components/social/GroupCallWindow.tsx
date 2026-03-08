@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, UserMinus, X, Users, Wifi, WifiOff, Monitor, MonitorOff, Hand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
