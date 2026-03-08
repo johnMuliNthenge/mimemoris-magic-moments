@@ -10,7 +10,7 @@ import { PublicFeed } from '@/components/social/PublicFeed';
 import { GroupChat } from '@/components/social/GroupChat';
 import { CreateGroupDialog } from '@/components/social/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/social/JoinGroupDialog';
-import { CallHistoryPanel } from '@/components/social/CallHistoryPanel';
+
 import { useChat } from '@/hooks/useChat';
 import { useFriends } from '@/hooks/useFriends';
 import { useGroupChat } from '@/hooks/useGroupChat';
