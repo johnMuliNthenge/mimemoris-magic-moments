@@ -273,9 +273,14 @@ export default function FutureMessages() {
                                 </div>
                               </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => startEdit(msg)}>
+                                <Clock className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>

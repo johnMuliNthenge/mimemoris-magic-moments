@@ -436,6 +436,31 @@ export default function AuthPage() {
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {isLogin ? t('login') : t('signup')}
                 </Button>
+
+                {isLogin && (
+                  <div className="text-center mt-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!formData.email) {
+                          toast({ variant: 'destructive', title: 'Enter your email', description: 'Please enter your email address first.' });
+                          return;
+                        }
+                        const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+                          redirectTo: `${window.location.origin}/reset-password`,
+                        });
+                        if (error) {
+                          toast({ variant: 'destructive', title: 'Error', description: error.message });
+                        } else {
+                          toast({ title: 'Check your email', description: 'A password reset link has been sent to your email.' });
+                        }
+                      }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {t('forgot_password')}
+                    </button>
+                  </div>
+                )}
               </form>
 
               <div className="mt-6 text-center">

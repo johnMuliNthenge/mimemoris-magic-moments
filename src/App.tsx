@@ -33,6 +33,8 @@ import JoinGroup from "./pages/JoinGroup";
 import Analytics from "./pages/Analytics";
 import FutureMessages from "./pages/FutureMessages";
 import Notifications from "./pages/Notifications";
+import ResetPassword from "./pages/ResetPassword";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -43,10 +45,12 @@ const App = () => (
         <WebRTCProvider>
         <Toaster />
         <Sonner />
+        <InstallPrompt />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/memories" element={<ProtectedRoute><Memories /></ProtectedRoute>} />
             <Route path="/memories/list" element={<ProtectedRoute><MemoriesList /></ProtectedRoute>} />
