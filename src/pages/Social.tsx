@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Users, MessageCircle, Globe, UsersRound, History } from 'lucide-react';
+import { Users, MessageCircle, Globe, UsersRound } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FriendsList } from '@/components/social/FriendsList';
@@ -10,7 +10,7 @@ import { PublicFeed } from '@/components/social/PublicFeed';
 import { GroupChat } from '@/components/social/GroupChat';
 import { CreateGroupDialog } from '@/components/social/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/social/JoinGroupDialog';
-import { CallHistoryPanel } from '@/components/social/CallHistoryPanel';
+
 import { useChat } from '@/hooks/useChat';
 import { useFriends } from '@/hooks/useFriends';
 import { useGroupChat } from '@/hooks/useGroupChat';
@@ -19,7 +19,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export default function SocialPage() {
@@ -31,7 +30,7 @@ export default function SocialPage() {
     avatar?: string;
   } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [showCallHistory, setShowCallHistory] = useState(false);
+  
   
   const { conversations } = useChat();
   const { friends, pendingRequests } = useFriends();
@@ -117,21 +116,8 @@ export default function SocialPage() {
             <div className="grid md:grid-cols-3 gap-4 h-[600px]">
               {/* Conversations list */}
               <div className="md:col-span-1 border border-border rounded-lg overflow-hidden">
-                <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                <div className="p-3 border-b border-border bg-muted/30">
                   <h3 className="font-medium">Conversations</h3>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setShowCallHistory(true)}
-                      >
-                        <History className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Call History</TooltipContent>
-                  </Tooltip>
                 </div>
                 <ScrollArea className="h-[calc(100%-48px)]">
                   {conversations.length === 0 ? (
@@ -180,16 +166,12 @@ export default function SocialPage() {
 
               {/* Chat window or Call History */}
               <div className="md:col-span-2 border border-border rounded-lg overflow-hidden">
-                {showCallHistory ? (
-                  <CallHistoryPanel onBack={() => setShowCallHistory(false)} />
-                ) : (
-                  <ChatWindow
-                    selectedUserId={selectedChatUser?.id || null}
-                    selectedUserName={selectedChatUser?.name}
-                    selectedUserAvatar={selectedChatUser?.avatar}
-                    onBack={() => setSelectedChatUser(null)}
-                  />
-                )}
+                <ChatWindow
+                  selectedUserId={selectedChatUser?.id || null}
+                  selectedUserName={selectedChatUser?.name}
+                  selectedUserAvatar={selectedChatUser?.avatar}
+                  onBack={() => setSelectedChatUser(null)}
+                />
               </div>
             </div>
           </TabsContent>
