@@ -49,6 +49,22 @@ interface Coupon {
   created_at: string;
 }
 
+interface Redemption {
+  id: string;
+  coupon_id: string;
+  user_id: string;
+  plan_id: string | null;
+  discount_percentage: number;
+  original_price: number;
+  discounted_price: number;
+  payment_method: string | null;
+  created_at: string;
+  coupon_code?: string;
+  user_email?: string;
+  user_name?: string;
+  plan_name?: string;
+}
+
 export function AdminCoupons() {
   const { toast } = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
