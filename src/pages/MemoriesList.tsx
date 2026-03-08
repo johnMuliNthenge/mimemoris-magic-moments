@@ -42,7 +42,8 @@ export default function MemoriesListPage() {
       .order('memory_date', { ascending: false });
 
     if (data) {
-      setMemories(data as Memory[]);
+      const signedMemories = await signMediaFields(data as Memory[], ['media_url']);
+      setMemories(signedMemories as Memory[]);
     }
     setLoading(false);
   };
