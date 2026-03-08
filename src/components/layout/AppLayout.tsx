@@ -133,6 +133,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Right Actions - Desktop */}
           <div className="hidden md:flex items-center gap-1">
+            <NotificationBell />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl">
