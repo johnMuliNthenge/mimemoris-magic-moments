@@ -49,6 +49,8 @@ export function useGroupCall(groupId: string) {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [handRaised, setHandRaised] = useState(false);
+  const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
 
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
