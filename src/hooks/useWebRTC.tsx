@@ -197,7 +197,7 @@ export function useWebRTC() {
 
   const markCallConnected = useCallback(() => {
     const currentLog = activeCallLog.current;
-    if (!currentLog || currentLog.finalized) return;
+    if (!currentLog || currentLog.finalized || currentLog.connectedAt) return;
 
     currentLog.connectedAt = Date.now();
 
