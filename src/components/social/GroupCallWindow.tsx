@@ -94,15 +94,18 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
     activeCall,
     participants,
     localStream,
+    screenStream,
     isHost,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     startCall,
     joinCall,
     leaveCall,
     kickParticipant,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
   } = callHook;
 
   const [showParticipants, setShowParticipants] = useState(false);
