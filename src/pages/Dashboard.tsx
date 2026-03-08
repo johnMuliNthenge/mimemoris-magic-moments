@@ -250,9 +250,9 @@ export default function Dashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">Daily Memory Usage</CardTitle>
+                    <CardTitle className="text-lg">{t('daily_memory_usage')}</CardTitle>
                     <CardDescription>
-                      {subscription.plan.name} - {subscription.memories_used_today}/{subscription.plan.daily_memory_limit} memories used today
+                      {t('daily_usage_desc', { plan: subscription.plan.name, used: subscription.memories_used_today, limit: subscription.plan.daily_memory_limit })}
                     </CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => navigate('/subscription')}>
