@@ -117,13 +117,6 @@ export default function SubscriptionPage() {
     if (!appliedCoupon) return price;
     return Math.round((price * (100 - appliedCoupon.discount_percentage)) * 100) / 100 / 100;
   };
-      toast({ variant: 'destructive', title: 'Login Required', description: 'Please log in to subscribe.' });
-      return;
-    }
-    refetchPaymentMethods();
-    setSelectedPlan(plan);
-    setShowPaymentDialog(true);
-  };
 
   const handleMpesaPayment = async () => {
     if (!selectedPlan || !mpesaPhone || !user) return;
