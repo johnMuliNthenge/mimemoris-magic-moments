@@ -275,7 +275,7 @@ export function WhatupFeed() {
                   <div className="flex justify-end">
                     <Button onClick={handlePost} disabled={uploading} className="gradient-warm text-primary-foreground">
                       {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Video className="w-4 h-4 mr-1" />}
-                      {uploading ? 'Posting...' : 'Post Whatup'}
+                      {uploading ? 'Posting...' : 'Post Video'}
                     </Button>
                   </div>
                 </div>
