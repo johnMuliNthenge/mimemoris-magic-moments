@@ -11,6 +11,7 @@ interface Participant {
   avatar_url: string | null;
   stream: MediaStream | null;
   pc: RTCPeerConnection | null;
+  connectionState: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 }
 
 interface ActiveGroupCall {
