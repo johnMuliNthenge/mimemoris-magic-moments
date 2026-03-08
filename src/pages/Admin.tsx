@@ -215,7 +215,7 @@ export default function AdminDashboard() {
               </TabsTrigger>
               <TabsTrigger value="payments" className="gap-2">
                 <Settings className="w-4 h-4" />
-                Payments
+                {t('payments')}
               </TabsTrigger>
             </TabsList>
 
