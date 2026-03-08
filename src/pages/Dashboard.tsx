@@ -370,7 +370,7 @@ export default function Dashboard() {
                 </Button>
                 <div className="pt-4 border-t border-border">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-muted-foreground">Your collaborations</p>
+                    <p className="text-sm text-muted-foreground">{t('your_collaborations')}</p>
                     <Button 
                       variant="link" 
                       size="sm" 
