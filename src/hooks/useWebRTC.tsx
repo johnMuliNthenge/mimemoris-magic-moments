@@ -558,7 +558,11 @@ export function useWebRTC() {
 
       pendingCandidates.current = [];
 
-      const stream = await getMedia(callType);
+      const { stream, resolvedType } = await getMedia(callType);
+      if (resolvedType !== callType) {
+        setCallState((prev) => ({ ...prev, type: resolvedType }));
+      }
+
       const pc = createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
         markCallConnected();
