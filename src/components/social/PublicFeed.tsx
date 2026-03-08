@@ -41,7 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 export function PublicFeed() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { memories, loading, toggleLike, getComments, addComment, refetch } = usePublicFeed();
+  const { memories, loading, loadingMore, hasMore, toggleLike, getComments, addComment, loadMore, refetch } = usePublicFeed();
   
   const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
   const [comments, setComments] = useState<any[]>([]);
