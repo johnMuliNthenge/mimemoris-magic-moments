@@ -144,6 +144,10 @@ export function useChat(selectedUserId?: string) {
             if (selectedUserId && (newMsg.sender_id === selectedUserId || newMsg.receiver_id === selectedUserId)) {
               setMessages(prev => [...prev, newMsg]);
             }
+            // Play sound for incoming messages
+            if (newMsg.receiver_id === user.id && newMsg.sender_id !== user.id) {
+              playMessageSound();
+            }
             fetchConversations();
           }
         } else if (payload.eventType === 'UPDATE') {
