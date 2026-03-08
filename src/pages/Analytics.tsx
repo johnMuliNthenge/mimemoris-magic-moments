@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -12,8 +12,11 @@ import {
   Sparkles,
   Loader2,
   ExternalLink,
+  Download,
+  Users,
+  MapPin,
 } from 'lucide-react';
-import { format, parseISO, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
+import { format, parseISO, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, eachDayOfInterval, subDays, getDay } from 'date-fns';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -27,6 +30,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { MoodTrendsSection } from '@/components/analytics/MoodTrendsSection';
 import { MoodComparisonSection } from '@/components/analytics/MoodComparisonSection';
+import { cn } from '@/lib/utils';
 
 const MOOD_MAP: Record<string, { label: string; score: number; color: string }> = {
   '😊': { label: 'Happy', score: 8, color: 'hsl(48, 90%, 55%)' },
@@ -48,6 +52,14 @@ const TYPE_COLORS: Record<string, string> = {
   audio: 'hsl(175, 50%, 45%)',
 };
 
+const HEATMAP_COLORS = [
+  'hsl(var(--muted))',
+  'hsl(142, 70%, 85%)',
+  'hsl(142, 70%, 65%)',
+  'hsl(142, 70%, 45%)',
+  'hsl(142, 70%, 30%)',
+];
+
 interface Memory {
   id: string;
   memory_type: string;
@@ -60,6 +72,7 @@ interface Memory {
   emotion_category: string | null;
   sentiment_score: number | null;
   event_category: string | null;
+  people_tags: string[] | null;
 }
 
 export default function Analytics() {
@@ -76,7 +89,7 @@ export default function Analytics() {
   const fetchMemories = async () => {
     const { data } = await supabase
       .from('memories')
-      .select('id, memory_type, memory_date, mood, ai_analysis, created_at, title, content, emotion_category, sentiment_score, event_category')
+      .select('id, memory_type, memory_date, mood, ai_analysis, created_at, title, content, emotion_category, sentiment_score, event_category, people_tags')
       .eq('user_id', user!.id)
       .order('memory_date', { ascending: true });
 
@@ -192,6 +205,53 @@ export default function Analytics() {
     return [...memories].reverse().slice(0, 5);
   }, [memories]);
 
+  // Top people tags
+  const topPeople = useMemo(() => {
+    const counts: Record<string, number> = {};
+    memories.forEach(m => {
+      if (m.people_tags) {
+        m.people_tags.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
+      }
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [memories]);
+
+  // Activity heatmap (last 16 weeks)
+  const heatmapData = useMemo(() => {
+    const today = new Date();
+    const start = subDays(today, 16 * 7 - 1);
+    const days = eachDayOfInterval({ start, end: today });
+    const countByDate: Record<string, number> = {};
+    memories.forEach(m => {
+      countByDate[m.memory_date] = (countByDate[m.memory_date] || 0) + 1;
+    });
+    const maxCount = Math.max(1, ...Object.values(countByDate));
+    return days.map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const count = countByDate[dateStr] || 0;
+      const level = count === 0 ? 0 : Math.min(4, Math.ceil((count / maxCount) * 4));
+      return { date: dateStr, count, level, dayOfWeek: getDay(day) };
+    });
+  }, [memories]);
+
+  // Group heatmap by weeks
+  const heatmapWeeks = useMemo(() => {
+    const weeks: typeof heatmapData[] = [];
+    let currentWeek: typeof heatmapData = [];
+    heatmapData.forEach((day, i) => {
+      if (i > 0 && day.dayOfWeek === 0) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+      currentWeek.push(day);
+    });
+    if (currentWeek.length > 0) weeks.push(currentWeek);
+    return weeks;
+  }, [heatmapData]);
+
   const navigateToMemories = (date?: string) => {
     if (date) {
       navigate(`/memories?date=${date}`);
@@ -201,9 +261,31 @@ export default function Analytics() {
   };
 
   const navigateToMemoriesByMonth = (fullMonth: string) => {
-    // Navigate to the first day of that month
     navigate(`/memories?date=${fullMonth}-01`);
   };
+
+  const exportCSV = useCallback(() => {
+    const headers = ['Date', 'Title', 'Type', 'Mood', 'Content', 'Emotion', 'Event Category', 'People Tags', 'Sentiment Score'];
+    const rows = memories.map(m => [
+      m.memory_date,
+      (m.title || '').replace(/"/g, '""'),
+      m.memory_type,
+      m.mood || '',
+      (m.content || '').replace(/"/g, '""').replace(/\n/g, ' '),
+      m.emotion_category || '',
+      m.event_category || '',
+      (m.people_tags || []).join('; '),
+      m.sentiment_score?.toString() || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [memories]);
 
   if (loading) {
     return (
@@ -227,10 +309,16 @@ export default function Analytics() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="font-display text-2xl font-bold">{t('analytics_title')}</h1>
             <p className="text-sm text-muted-foreground">{t('analytics_subtitle')}</p>
           </div>
+          {memories.length > 0 && (
+            <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5">
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </Button>
+          )}
         </motion.div>
 
         {memories.length === 0 ? (
@@ -335,6 +423,49 @@ export default function Analytics() {
                 </Card>
               </motion.div>
             </div>
+
+            {/* Activity Heatmap */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.27 }}>
+              <Card className="border-border shadow-soft">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    Memory Activity
+                  </CardTitle>
+                  <CardDescription>Your memory recording consistency over the last 16 weeks</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto pb-2">
+                    <div className="flex gap-[3px] min-w-fit">
+                      {heatmapWeeks.map((week, wi) => (
+                        <div key={wi} className="flex flex-col gap-[3px]">
+                          {/* Pad first week if it doesn't start on Sunday */}
+                          {wi === 0 && week[0] && Array.from({ length: week[0].dayOfWeek }).map((_, i) => (
+                            <div key={`pad-${i}`} className="w-3 h-3" />
+                          ))}
+                          {week.map(day => (
+                            <div
+                              key={day.date}
+                              className="w-3 h-3 rounded-[2px] cursor-pointer transition-colors hover:ring-1 hover:ring-foreground/30"
+                              style={{ backgroundColor: HEATMAP_COLORS[day.level] }}
+                              title={`${day.date}: ${day.count} ${day.count === 1 ? 'memory' : 'memories'}`}
+                              onClick={() => day.count > 0 && navigateToMemories(day.date)}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground justify-end">
+                      <span>Less</span>
+                      {HEATMAP_COLORS.map((color, i) => (
+                        <div key={i} className="w-3 h-3 rounded-[2px]" style={{ backgroundColor: color }} />
+                      ))}
+                      <span>More</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
             {/* Recent Memories Quick Links */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
@@ -488,7 +619,6 @@ export default function Analytics() {
                         <RechartsTooltip />
                       </PieChart>
                     </ResponsiveContainer>
-                    {/* Type links */}
                     <div className="flex flex-wrap gap-2 mt-3">
                       {typeDistribution.map((t) => (
                         <Badge
@@ -584,6 +714,44 @@ export default function Analytics() {
                 </Card>
               </motion.div>
             </div>
+
+            {/* Top People Tags */}
+            {topPeople.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52 }}>
+                <Card className="border-border shadow-soft">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-primary" />
+                      People in Your Memories
+                    </CardTitle>
+                    <CardDescription>Who appears most frequently in your memories</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {topPeople.map((person, i) => (
+                        <div
+                          key={person.name}
+                          className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border cursor-pointer hover:bg-muted transition-colors"
+                          onClick={() => navigateToMemories()}
+                        >
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
+                            i === 0 ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+                          )}>
+                            {person.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{person.name}</p>
+                            <p className="text-xs text-muted-foreground">{person.count} {person.count === 1 ? 'memory' : 'memories'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
             {/* Mood Trends Dashboard */}
             <MoodTrendsSection memories={memories} />
             {/* Mood Period Comparison */}

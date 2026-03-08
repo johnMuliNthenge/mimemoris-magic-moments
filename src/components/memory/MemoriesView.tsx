@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval } from 'date-fns';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -13,11 +13,15 @@ import {
   LayoutGrid,
   List,
   ArrowLeft,
-  X
+  X,
+  Search,
+  Download,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -25,6 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
 interface Memory {
@@ -36,6 +46,10 @@ interface Memory {
   media_url: string | null;
   mood: string | null;
   created_at: string;
+  emotion_category?: string | null;
+  event_category?: string | null;
+  people_tags?: string[] | null;
+  sentiment_score?: number | null;
 }
 
 interface MemoriesViewProps {
@@ -80,25 +94,59 @@ export function MemoriesView({
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'calendar'>(initialView);
+  const [searchQuery, setSearchQuery] = useState('');
   const [filterMood, setFilterMood] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterEmotion, setFilterEmotion] = useState<string>('all');
+  const [filterEvent, setFilterEvent] = useState<string>('all');
+  const [filterPerson, setFilterPerson] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string | null>(initialSelectedDate || searchParams.get('date'));
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Extract unique values for filter dropdowns
+  const uniqueEmotions = useMemo(() => {
+    const set = new Set<string>();
+    memories.forEach(m => { if (m.emotion_category) set.add(m.emotion_category); });
+    return Array.from(set).sort();
+  }, [memories]);
+
+  const uniqueEvents = useMemo(() => {
+    const set = new Set<string>();
+    memories.forEach(m => { if (m.event_category) set.add(m.event_category); });
+    return Array.from(set).sort();
+  }, [memories]);
+
+  const uniquePeople = useMemo(() => {
+    const set = new Set<string>();
+    memories.forEach(m => { if (m.people_tags) m.people_tags.forEach(p => set.add(p)); });
+    return Array.from(set).sort();
+  }, [memories]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterMood, filterType, selectedDate, pageSize]);
+  }, [searchQuery, filterMood, filterType, filterEmotion, filterEvent, filterPerson, selectedDate, dateFrom, dateTo, pageSize]);
 
   const filteredMemories = useMemo(() => {
     return memories.filter(memory => {
+      const matchesSearch = !searchQuery || 
+        (memory.title?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (memory.content?.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesMood = filterMood === 'all' || memory.mood === filterMood;
       const matchesType = filterType === 'all' || memory.memory_type === filterType;
+      const matchesEmotion = filterEmotion === 'all' || memory.emotion_category === filterEmotion;
+      const matchesEvent = filterEvent === 'all' || memory.event_category === filterEvent;
+      const matchesPerson = filterPerson === 'all' || (memory.people_tags && memory.people_tags.includes(filterPerson));
       const matchesDate = !selectedDate || memory.memory_date === selectedDate;
-      return matchesMood && matchesType && matchesDate;
+      const matchesDateRange = (!dateFrom || parseISO(memory.memory_date) >= dateFrom) &&
+        (!dateTo || parseISO(memory.memory_date) <= dateTo);
+      return matchesSearch && matchesMood && matchesType && matchesEmotion && matchesEvent && matchesPerson && matchesDate && matchesDateRange;
     });
-  }, [memories, filterMood, filterType, selectedDate]);
+  }, [memories, searchQuery, filterMood, filterType, filterEmotion, filterEvent, filterPerson, selectedDate, dateFrom, dateTo]);
 
   // Pagination
   const totalPages = Math.ceil(filteredMemories.length / pageSize);
@@ -132,9 +180,15 @@ export function MemoriesView({
   };
 
   const clearFilters = () => {
+    setSearchQuery('');
     setFilterMood('all');
     setFilterType('all');
+    setFilterEmotion('all');
+    setFilterEvent('all');
+    setFilterPerson('all');
     setSelectedDate(null);
+    setDateFrom(undefined);
+    setDateTo(undefined);
     setSearchParams({});
   };
 
@@ -159,7 +213,29 @@ export function MemoriesView({
     }
   };
 
-  const hasActiveFilters = filterMood !== 'all' || filterType !== 'all' || selectedDate !== null;
+  const exportCSV = useCallback(() => {
+    const headers = ['Date', 'Title', 'Type', 'Mood', 'Content', 'Emotion', 'Event Category', 'People Tags'];
+    const rows = filteredMemories.map(m => [
+      m.memory_date,
+      (m.title || '').replace(/"/g, '""'),
+      m.memory_type,
+      m.mood || '',
+      (m.content || '').replace(/"/g, '""').replace(/\n/g, ' '),
+      m.emotion_category || '',
+      m.event_category || '',
+      (m.people_tags || []).join('; '),
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `memories-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [filteredMemories]);
+
+  const hasActiveFilters = searchQuery || filterMood !== 'all' || filterType !== 'all' || filterEmotion !== 'all' || filterEvent !== 'all' || filterPerson !== 'all' || selectedDate !== null || dateFrom || dateTo;
 
   const renderMemoryCard = (memory: Memory, index: number) => {
     const Icon = typeIcons[memory.memory_type];
@@ -204,7 +280,15 @@ export function MemoriesView({
                       {memory.content}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {memory.emotion_category && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{memory.emotion_category}</Badge>
+                    )}
+                    {memory.event_category && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{memory.event_category}</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
                     {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
                   </p>
                 </div>
@@ -248,10 +332,19 @@ export function MemoriesView({
                     {memory.content}
                   </p>
                 )}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <Badge variant="secondary" className="text-xs">
                     {memory.memory_type}
                   </Badge>
+                  {memory.emotion_category && (
+                    <Badge variant="outline" className="text-xs">{memory.emotion_category}</Badge>
+                  )}
+                  {memory.event_category && (
+                    <Badge variant="outline" className="text-xs">{memory.event_category}</Badge>
+                  )}
+                  {memory.people_tags && memory.people_tags.length > 0 && (
+                    <Badge variant="outline" className="text-xs">👥 {memory.people_tags.length}</Badge>
+                  )}
                   <span className="text-xs text-muted-foreground">
                     {format(parseISO(memory.memory_date), 'MMM d, yyyy')} • {format(parseISO(memory.created_at), 'h:mm a')}
                   </span>
@@ -289,97 +382,226 @@ export function MemoriesView({
             {selectedDate && ' for this date'}
           </p>
         </div>
+        {viewMode !== 'calendar' && (
+          <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+        )}
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search memories by title or content..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-2">
-          {/* View Mode Toggle */}
-          <div className="flex rounded-lg border border-border p-1">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex rounded-lg border border-border p-1">
+              <Button
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="gap-2"
+              >
+                <List className="w-4 h-4" />
+                List
+              </Button>
+              <Button
+                variant={viewMode === 'card' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('card')}
+                className="gap-2"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Card
+              </Button>
+              <Button
+                variant={viewMode === 'calendar' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => { setViewMode('calendar'); setSelectedDate(null); }}
+                className="gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                Calendar
+              </Button>
+            </div>
+
             <Button
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              variant={showAdvanced ? 'secondary' : 'outline'}
               size="sm"
-              onClick={() => setViewMode('list')}
-              className="gap-2"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="gap-1.5"
             >
-              <List className="w-4 h-4" />
-              List
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
+              {hasActiveFilters && <span className="w-2 h-2 rounded-full bg-primary" />}
             </Button>
-            <Button
-              variant={viewMode === 'card' ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('card')}
-              className="gap-2"
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Card
-            </Button>
-            <Button
-              variant={viewMode === 'calendar' ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => { setViewMode('calendar'); setSelectedDate(null); }}
-              className="gap-2"
-            >
-              <Calendar className="w-4 h-4" />
-              Calendar
-            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Page Size */}
+            {viewMode !== 'calendar' && (
+              <Select value={pageSize.toString()} onValueChange={(v) => setPageSize(Number(v))}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Mood Filter */}
+            <Select value={filterMood} onValueChange={setFilterMood}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Mood" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Moods</SelectItem>
+                {moods.map(mood => (
+                  <SelectItem key={mood} value={mood}>
+                    <span className="flex items-center gap-2">
+                      <span className="text-lg">{mood}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Type Filter */}
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="text">Text</SelectItem>
+                <SelectItem value="audio">Audio</SelectItem>
+                <SelectItem value="video">Video</SelectItem>
+                <SelectItem value="photo">Photo</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="w-4 h-4 mr-1" />
+                Clear
+              </Button>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Page Size */}
-          {viewMode !== 'calendar' && (
-            <Select value={pageSize.toString()} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Advanced Filters */}
+        <AnimatePresence>
+          {showAdvanced && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-4 rounded-lg border border-border bg-muted/30">
+                {/* Emotion Category */}
+                {uniqueEmotions.length > 0 && (
+                  <Select value={filterEmotion} onValueChange={setFilterEmotion}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Emotion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Emotions</SelectItem>
+                      {uniqueEmotions.map(e => (
+                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Event Category */}
+                {uniqueEvents.length > 0 && (
+                  <Select value={filterEvent} onValueChange={setFilterEvent}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Event" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Events</SelectItem>
+                      {uniqueEvents.map(e => (
+                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* People Tags */}
+                {uniquePeople.length > 0 && (
+                  <Select value={filterPerson} onValueChange={setFilterPerson}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Person" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All People</SelectItem>
+                      {uniquePeople.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Date From */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("justify-start text-left text-xs h-9 w-full", !dateFrom && "text-muted-foreground")}>
+                      <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                      {dateFrom ? format(dateFrom, 'MMM d, yyyy') : 'From date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={dateFrom}
+                      onSelect={setDateFrom}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* Date To */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("justify-start text-left text-xs h-9 w-full", !dateTo && "text-muted-foreground")}>
+                      <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                      {dateTo ? format(dateTo, 'MMM d, yyyy') : 'To date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarPicker
+                      mode="single"
+                      selected={dateTo}
+                      onSelect={setDateTo}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </motion.div>
           )}
-
-          {/* Mood Filter */}
-          <Select value={filterMood} onValueChange={setFilterMood}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Mood" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Moods</SelectItem>
-              {moods.map(mood => (
-                <SelectItem key={mood} value={mood}>
-                  <span className="flex items-center gap-2">
-                    <span className="text-lg">{mood}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Type Filter */}
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="text">Text</SelectItem>
-              <SelectItem value="audio">Audio</SelectItem>
-              <SelectItem value="video">Video</SelectItem>
-              <SelectItem value="photo">Photo</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="w-4 h-4 mr-1" />
-              Clear
-            </Button>
-          )}
-        </div>
+        </AnimatePresence>
       </div>
 
       {/* List/Card View */}
