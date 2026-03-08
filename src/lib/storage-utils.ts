@@ -61,7 +61,7 @@ async function buildSignedUrlMap(paths: string[], expiresIn: number) {
   return map;
 }
 
-export async function signMediaFields<T extends Record<string, unknown>>(
+export async function signMediaFields<T extends object>(
   items: T[],
   fields: Array<keyof T>,
   expiresIn = 3600,
@@ -72,7 +72,7 @@ export async function signMediaFields<T extends Record<string, unknown>>(
 
   for (const item of items) {
     for (const field of fields) {
-      const value = item[field];
+      const value = (item as Record<string, unknown>)[field as string];
       if (typeof value === 'string') {
         const path = extractMemoryObjectPath(value);
         if (path) paths.add(path);
@@ -84,10 +84,10 @@ export async function signMediaFields<T extends Record<string, unknown>>(
   if (signedMap.size === 0) return items;
 
   return items.map((item) => {
-    const updated = { ...item } as Record<string, unknown>;
+    const updated = { ...(item as Record<string, unknown>) };
 
     for (const field of fields) {
-      const value = item[field];
+      const value = (item as Record<string, unknown>)[field as string];
       if (typeof value !== 'string') continue;
 
       const path = extractMemoryObjectPath(value);
