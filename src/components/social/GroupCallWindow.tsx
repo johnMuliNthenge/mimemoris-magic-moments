@@ -268,6 +268,13 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
             <Users className="w-3 h-3" />
             {participantList.length + 1}
           </Badge>
+          {participantList.length + 1 > 6 && (
+            <Badge variant="destructive" className="text-[10px] sm:text-xs animate-pulse">
+              {t('participant_limit_warning')}
+            </Badge>
+          )}
+            {participantList.length + 1}
+          </Badge>
           {isHost && (
             <Sheet>
               <SheetTrigger asChild>
