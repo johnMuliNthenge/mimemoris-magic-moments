@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Loader2, MessageCircle, Send, Twitter, Music, Facebook, Link, Copy, Check, ExternalLink, Lock } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { Loader2, MessageCircle, Send, Twitter, Music, Facebook, Link, Copy, Check, ExternalLink, Lock, History, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
