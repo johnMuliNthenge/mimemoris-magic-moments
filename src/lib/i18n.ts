@@ -590,6 +590,7 @@ const resources = {
 
       ...analyticsKeys.en,
       ...timelockKeys.en,
+      ...notificationKeys.en,
     }
   },
   fr: {
