@@ -16,12 +16,13 @@ interface GroupCallWindowProps {
   callHook: ReturnType<typeof useGroupCall>;
 }
 
-function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
+function VideoTile({ stream, label, avatarUrl, isMuted, isLocal, connectionState }: {
   stream: MediaStream | null;
   label: string;
   avatarUrl?: string | null;
   isMuted?: boolean;
   isLocal?: boolean;
+  connectionState?: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasVideo = !!stream?.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
