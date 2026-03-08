@@ -241,7 +241,7 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
       >
         <div className="animate-pulse flex flex-col items-center gap-3">
           <Phone className="w-10 h-10 text-primary" />
-          <p className="text-lg">Joining call...</p>
+          <p className="text-lg">{t('joining_call')}</p>
         </div>
       </motion.div>
     );
