@@ -203,7 +203,7 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-            <p className="text-muted-foreground text-center text-sm sm:text-base">Start a call for group members to join</p>
+            <p className="text-muted-foreground text-center text-sm sm:text-base">{t('start_call_desc')}</p>
             <div className="flex gap-3 w-full">
               <Button
                 size="lg"
@@ -212,8 +212,8 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
                 onClick={() => startCall('audio')}
               >
                 <Phone className="w-5 h-5" />
-                <span className="hidden sm:inline">Audio Call</span>
-                <span className="sm:hidden">Audio</span>
+                <span className="hidden sm:inline">{t('audio_call')}</span>
+                <span className="sm:hidden">{t('audio_call')}</span>
               </Button>
               <Button
                 size="lg"
@@ -221,8 +221,8 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
                 onClick={() => startCall('video')}
               >
                 <Video className="w-5 h-5" />
-                <span className="hidden sm:inline">Video Call</span>
-                <span className="sm:hidden">Video</span>
+                <span className="hidden sm:inline">{t('video_call')}</span>
+                <span className="sm:hidden">{t('video_call')}</span>
               </Button>
             </div>
           </div>
