@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PhoneOff, Video, VideoOff, Mic, MicOff, PhoneIncoming } from 'lucide-react';
+import { PhoneOff, Video, VideoOff, Mic, MicOff, PhoneIncoming, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import type { CallStatus, CallType } from '@/hooks/useWebRTC';
 
 interface CallWindowProps {
@@ -48,6 +49,64 @@ export function CallWindow({
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const { toast } = useToast();
+
+  const startRecording = useCallback(() => {
+    try {
+      const streams: MediaStream[] = [];
+      if (localStream.current) streams.push(localStream.current);
+      if (remoteStream.current) streams.push(remoteStream.current);
+      if (streams.length === 0) return;
+
+      // Combine local + remote audio/video into one stream
+      const combined = new MediaStream();
+      streams.forEach(s => s.getTracks().forEach(t => combined.addTrack(t)));
+
+      const recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp8,opus' });
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `call-recording-${new Date().toISOString().slice(0, 19)}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: 'Recording saved', description: 'Your call recording has been downloaded.' });
+      };
+
+      recorder.start(1000);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      toast({ title: 'Recording started' });
+    } catch (err) {
+      console.error('[CallWindow] Recording failed:', err);
+      toast({ variant: 'destructive', title: 'Recording failed', description: 'Could not start recording.' });
+    }
+  }, [localStream, remoteStream, toast]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
+    }
+  }, []);
+
+  // Stop recording when call ends
+  useEffect(() => {
+    if (status === 'ended' || status === 'idle') {
+      stopRecording();
+    }
+  }, [status, stopRecording]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -226,6 +285,27 @@ export function CallWindow({
                       onClick={handleToggleVideo}
                     >
                       {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+                    </Button>
+                  </motion.div>
+                )}
+
+                {status === 'connected' && (
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <Button
+                      size="lg"
+                      variant={isRecording ? 'destructive' : 'secondary'}
+                      className="rounded-full w-12 h-12 relative"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      title={isRecording ? 'Stop recording' : 'Record call'}
+                    >
+                      <Circle className={cn("w-5 h-5", isRecording && "fill-current")} />
+                      {isRecording && (
+                        <motion.div
+                          animate={{ opacity: [1, 0.3, 1] }}
+                          transition={{ duration: 1.2, repeat: Infinity }}
+                          className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-destructive border-2 border-background"
+                        />
+                      )}
                     </Button>
                   </motion.div>
                 )}
