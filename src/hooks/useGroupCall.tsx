@@ -451,6 +451,74 @@ export function useGroupCall(groupId: string) {
     }
   };
 
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      // Stop screen sharing — revert to camera
+      stopScreenShare();
+      return;
+    }
+
+    try {
+      const screen = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always' } as any,
+        audio: false
+      });
+
+      screenStreamRef.current = screen;
+      setScreenStream(screen);
+      setIsScreenSharing(true);
+
+      const screenTrack = screen.getVideoTracks()[0];
+
+      // When user stops sharing via browser UI
+      screenTrack.onended = () => {
+        stopScreenShare();
+      };
+
+      // Replace the video track in every peer connection with the screen track
+      peersRef.current.forEach((pc, peerId) => {
+        const videoSender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(screenTrack);
+          screenSendersRef.current.set(peerId, videoSender);
+        }
+      });
+
+      // Broadcast to peers that screen sharing started
+      signalingChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'screen-share',
+        payload: { userId: user!.id, sharing: true }
+      });
+    } catch (err) {
+      // User cancelled the screen picker
+      console.log('Screen share cancelled or failed:', err);
+    }
+  };
+
+  const stopScreenShare = () => {
+    // Stop screen tracks
+    screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    setIsScreenSharing(false);
+
+    // Revert to camera track in all peer connections
+    const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (cameraTrack) {
+      screenSendersRef.current.forEach((sender) => {
+        sender.replaceTrack(cameraTrack);
+      });
+    }
+    screenSendersRef.current.clear();
+
+    signalingChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'screen-share',
+      payload: { userId: user!.id, sharing: false }
+    });
+  };
+
   const cleanup = (resetStatus = true) => {
     peersRef.current.forEach(pc => pc.close());
     peersRef.current.clear();
