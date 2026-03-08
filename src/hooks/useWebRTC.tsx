@@ -331,21 +331,21 @@ export function useWebRTC() {
 
       const getLocalTracks = () => localStream.current?.getTracks() ?? [];
 
-      const syncRemoteTracks = (tracks: MediaStreamTrack[]) => {
+      const refreshRemoteFromReceivers = () => {
         const localTracks = getLocalTracks();
-        const incomingTracks = tracks
+        const receiverTracks = pc
+          .getReceivers()
+          .map((receiver) => receiver.track)
           .filter((track): track is MediaStreamTrack => Boolean(track) && track.readyState === 'live')
           .filter((track) => !localTracks.some((localTrack) => localTrack === track));
 
-        
-
         receiverRemoteStream.getTracks().forEach((track) => {
-          if (!incomingTracks.some((incoming) => incoming.id === track.id)) {
+          if (!receiverTracks.some((incoming) => incoming.id === track.id)) {
             receiverRemoteStream.removeTrack(track);
           }
         });
 
-        incomingTracks.forEach((track) => {
+        receiverTracks.forEach((track) => {
           const exists = receiverRemoteStream.getTracks().some((existing) => existing.id === track.id);
           if (!exists) receiverRemoteStream.addTrack(track);
         });
@@ -353,28 +353,15 @@ export function useWebRTC() {
         remoteStream.current = receiverRemoteStream;
       };
 
-      const refreshRemoteFromReceivers = () => {
-        const receiverTracks = pc
-          .getReceivers()
-          .map((receiver) => receiver.track)
-          .filter((track): track is MediaStreamTrack => Boolean(track));
-
-        syncRemoteTracks(receiverTracks);
-      };
-
       pc.ontrack = (event) => {
-        const streamTracks = event.streams?.[0]?.getTracks() ?? [];
-
-        if (streamTracks.length > 0) {
-          syncRemoteTracks(streamTracks);
-        } else if (event.track) {
-          syncRemoteTracks([event.track]);
-        } else {
-          refreshRemoteFromReceivers();
-        }
+        refreshRemoteFromReceivers();
 
         if (event.track) {
           event.track.onunmute = () => {
+            refreshRemoteFromReceivers();
+          };
+
+          event.track.onended = () => {
             refreshRemoteFromReceivers();
           };
         }
@@ -627,19 +614,26 @@ export function useWebRTC() {
         try {
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
 
-          if (!localStream.current) {
+          const shouldAcquireLocalMedia =
+            !localStream.current ||
+            !localStream.current.getTracks().some((track) => track.readyState === 'live');
+
+          if (shouldAcquireLocalMedia) {
             const { stream, resolvedType } = await getMedia(initialCallType);
             if (resolvedType !== initialCallType) {
               setCallState((prev) => ({ ...prev, type: resolvedType }));
             }
+          }
 
-            stream.getTracks().forEach((track) => {
+          const activeStream = localStream.current;
+          if (activeStream) {
+            activeStream.getTracks().forEach((track) => {
               const alreadySending = peerConnection.current
                 ?.getSenders()
                 .some((sender) => sender.track === track);
 
               if (!alreadySending) {
-                peerConnection.current?.addTrack(track, stream);
+                peerConnection.current?.addTrack(track, activeStream);
               }
             });
           }
