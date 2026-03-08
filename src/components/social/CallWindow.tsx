@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Phone,
   PhoneOff,
   Video,
   VideoOff,
   Mic,
   MicOff,
-  X,
   PhoneIncoming,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,24 +52,33 @@ export function CallWindow({
 }: CallWindowProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (localVideoRef.current && localStream.current) {
-        if (localVideoRef.current.srcObject !== localStream.current) {
-          localVideoRef.current.srcObject = localStream.current;
-        }
+      if (localVideoRef.current && localStream.current && localVideoRef.current.srcObject !== localStream.current) {
+        localVideoRef.current.srcObject = localStream.current;
       }
-      if (remoteVideoRef.current && remoteStream.current) {
-        if (remoteVideoRef.current.srcObject !== remoteStream.current) {
-          remoteVideoRef.current.srcObject = remoteStream.current;
-        }
+
+      if (remoteVideoRef.current && remoteStream.current && remoteVideoRef.current.srcObject !== remoteStream.current) {
+        remoteVideoRef.current.srcObject = remoteStream.current;
       }
-    }, 500);
+
+      if (
+        remoteAudioRef.current &&
+        type === 'audio' &&
+        status === 'connected' &&
+        remoteStream.current &&
+        remoteAudioRef.current.srcObject !== remoteStream.current
+      ) {
+        remoteAudioRef.current.srcObject = remoteStream.current;
+      }
+    }, 250);
+
     return () => clearInterval(interval);
-  }, [localStream, remoteStream, status]);
+  }, [localStream, remoteStream, status, type]);
 
   const handleToggleMute = () => {
     setIsMuted(!isMuted);
@@ -97,10 +104,14 @@ export function CallWindow({
           initial={{ y: 50 }}
           animate={{ y: 0 }}
           className={cn(
-            "relative w-full max-w-2xl mx-4 rounded-2xl overflow-hidden shadow-2xl",
-            type === 'video' ? "bg-black aspect-video" : "bg-card p-8"
+            'relative w-full max-w-2xl mx-4 rounded-2xl overflow-hidden shadow-2xl',
+            type === 'video' ? 'bg-black aspect-video' : 'bg-card p-8'
           )}
         >
+          {type === 'audio' && status === 'connected' && (
+            <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+          )}
+
           {/* Video call - show video streams */}
           {type === 'video' && status === 'connected' && (
             <>
@@ -111,6 +122,7 @@ export function CallWindow({
                 playsInline
                 className="w-full h-full object-cover"
               />
+
               {/* Local video (pip) */}
               <motion.div
                 drag
@@ -183,10 +195,13 @@ export function CallWindow({
           )}
 
           {/* Controls */}
-          <div className={cn(
-            "flex items-center justify-center gap-4 py-6",
-            type === 'video' && status === 'connected' && "absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent pt-12"
-          )}>
+          <div
+            className={cn(
+              'flex items-center justify-center gap-4 py-6',
+              type === 'video' && status === 'connected' &&
+                'absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent pt-12'
+            )}
+          >
             {/* Incoming call - Accept/Reject */}
             {status === 'ringing' && isIncoming && (
               <>
@@ -203,7 +218,7 @@ export function CallWindow({
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                   <Button
                     size="lg"
-                    className="rounded-full w-14 h-14 bg-green-500 hover:bg-green-600"
+                    className="rounded-full w-14 h-14 bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={onAccept}
                   >
                     <PhoneIncoming className="w-6 h-6" />
@@ -213,12 +228,12 @@ export function CallWindow({
             )}
 
             {/* Active call or outgoing call controls */}
-            {(status === 'connected' || (status === 'calling')) && (
+            {(status === 'connected' || status === 'calling') && (
               <>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                   <Button
                     size="lg"
-                    variant={isMuted ? "destructive" : "secondary"}
+                    variant={isMuted ? 'destructive' : 'secondary'}
                     className="rounded-full w-12 h-12"
                     onClick={handleToggleMute}
                   >
@@ -230,7 +245,7 @@ export function CallWindow({
                   <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                     <Button
                       size="lg"
-                      variant={isVideoOff ? "destructive" : "secondary"}
+                      variant={isVideoOff ? 'destructive' : 'secondary'}
                       className="rounded-full w-12 h-12"
                       onClick={handleToggleVideo}
                     >
