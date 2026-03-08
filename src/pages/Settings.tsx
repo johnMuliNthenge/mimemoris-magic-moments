@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { SocialImportSettings } from '@/components/settings/SocialImportSettings';
 import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { SyncQueueManager } from '@/components/pwa/SyncQueueManager';
 
 const languages = [
   { code: 'en', name: 'English' },
@@ -289,40 +290,49 @@ export default function SettingsPage() {
           </Card>
         </motion.div>
 
-        {/* Theme Settings */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="border-border shadow-soft">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {isDark ? <Moon className="w-5 h-5 text-collab" /> : <Sun className="w-5 h-5 text-warning" />}
-                {t('theme_settings')}
-              </CardTitle>
-              <CardDescription>
-                Switch between light and dark mode
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Sun className="w-5 h-5 text-warning" />
-                  <span className="text-sm">{t('light_mode')}</span>
+          {/* Theme Settings */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="border-border shadow-soft">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {isDark ? <Moon className="w-5 h-5 text-collab" /> : <Sun className="w-5 h-5 text-warning" />}
+                  {t('theme_settings')}
+                </CardTitle>
+                <CardDescription>
+                  Switch between light and dark mode
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Sun className="w-5 h-5 text-warning" />
+                    <span className="text-sm">{t('light_mode')}</span>
+                  </div>
+                  <Switch
+                    checked={isDark}
+                    onCheckedChange={toggleTheme}
+                  />
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm">{t('dark_mode')}</span>
+                    <Moon className="w-5 h-5 text-collab" />
+                  </div>
                 </div>
-                <Switch
-                  checked={isDark}
-                  onCheckedChange={toggleTheme}
-                />
-                <div className="flex items-center gap-3">
-                  <span className="text-sm">{t('dark_mode')}</span>
-                  <Moon className="w-5 h-5 text-collab" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Offline & Sync */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+          >
+            <SyncQueueManager />
+          </motion.div>
       </div>
     </AppLayout>
   );
