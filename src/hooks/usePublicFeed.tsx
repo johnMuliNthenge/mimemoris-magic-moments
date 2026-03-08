@@ -229,7 +229,7 @@ export function usePublicFeed() {
       .update({ is_public: isPublic })
       .eq('id', memoryId);
 
-    if (!error) fetchPublicMemories();
+    if (!error) fetchPublicMemories(0);
     return { error };
   };
 
