@@ -131,25 +131,14 @@ export function AdminUsers() {
     if (!manageSubUser || !selectedPlanId) return;
     setSavingSub(true);
     try {
-      if (manageSubUser.subscription) {
-        // Update existing subscription
-        const { error } = await supabase
-          .from('user_subscriptions')
-          .update({ plan_id: selectedPlanId, status: 'active', updated_at: new Date().toISOString() })
-          .eq('id', manageSubUser.subscription.id);
-        if (error) throw error;
-      } else {
-        // Create new subscription
-        const { error } = await supabase
-          .from('user_subscriptions')
-          .insert({
-            user_id: manageSubUser.id,
-            plan_id: selectedPlanId,
-            status: 'active',
-            current_period_start: new Date().toISOString(),
-          });
-        if (error) throw error;
-      }
+      // Use secure server-side function for subscription management
+      const { error } = await supabase.rpc('upsert_user_subscription', {
+        _user_id: manageSubUser.id,
+        _plan_id: selectedPlanId,
+        _status: 'active',
+        _period_end: null,
+      });
+      if (error) throw error;
       toast({ title: 'Subscription Updated', description: 'User subscription has been updated.' });
       setManageSubUser(null);
       fetchUsers();
