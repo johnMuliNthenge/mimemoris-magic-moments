@@ -409,9 +409,15 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          {/* Call buttons */}
-          <Button variant="ghost" size="icon" onClick={() => setShowCallWindow(true)} title="Start or join call">
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Call button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowCallWindow(true)}
+            title="Start or join call"
+            className={activeCall ? "text-green-600 animate-pulse" : "text-primary"}
+          >
             <Phone className="w-5 h-5" />
           </Button>
           <Dialog open={showQR} onOpenChange={setShowQR}>
