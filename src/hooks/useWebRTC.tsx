@@ -403,8 +403,15 @@ export function useWebRTC() {
       try {
         await waitForChannelSubscription(notifyChannel, 'Incoming notification channel');
         await sendSignal(notifyChannel, event, payload);
+
+        // Retry once to reduce missed incoming-call notifications on slower connections
+        setTimeout(() => {
+          void sendSignal(notifyChannel, event, payload).catch((error) => {
+            console.warn('[WebRTC] Incoming notification retry failed:', error);
+          });
+        }, 600);
       } finally {
-        setTimeout(() => supabase.removeChannel(notifyChannel), 500);
+        setTimeout(() => supabase.removeChannel(notifyChannel), 3000);
       }
     },
     [sendSignal, waitForChannelSubscription]
