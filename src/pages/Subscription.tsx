@@ -46,6 +46,15 @@ export default function SubscriptionPage() {
   const [mpesaPolling, setMpesaPolling] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    coupon_id: string;
+    code: string;
+    discount_percentage: number;
+  } | null>(null);
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
