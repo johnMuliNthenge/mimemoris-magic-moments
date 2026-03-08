@@ -282,6 +282,15 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
           <Button
             variant="ghost"
             size="icon"
+            className={cn("text-muted-foreground hover:text-primary", showCallHistory && "text-primary bg-primary/10")}
+            onClick={() => setShowCallHistory(!showCallHistory)}
+            title="Call history"
+          >
+            <Clock3 className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             className="text-muted-foreground hover:text-primary"
             onClick={() => initiateCall(selectedUserId, 'audio', selectedUserName, selectedUserAvatar)}
             title="Audio call"
