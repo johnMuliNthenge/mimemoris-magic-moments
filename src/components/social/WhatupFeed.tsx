@@ -183,7 +183,7 @@ export function WhatupFeed() {
 
   const handleShare = async (post: any) => {
     const shareUrl = `https://mimemora.lovable.app/friends`;
-    const shareText = post.caption || 'Check out this Whatup video on Mimemora!';
+    const shareText = post.caption || 'Check out this Trending video on Mimemora!';
 
     if (navigator.share) {
       try {
