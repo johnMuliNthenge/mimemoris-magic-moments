@@ -187,7 +187,7 @@ export function WhatupFeed() {
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Mimemora Whatup', text: shareText, url: shareUrl });
+        await navigator.share({ title: 'Mimemora Trending', text: shareText, url: shareUrl });
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           await navigator.clipboard.writeText(shareUrl);
