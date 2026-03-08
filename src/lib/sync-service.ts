@@ -1,5 +1,5 @@
 /**
- * Sync Service - Automatically syncs offline memories when back online
+ * Sync Service - Syncs offline memories & queued operations with exponential backoff
  */
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -8,15 +8,27 @@ import {
   getMediaForMemory,
   updateMemorySyncStatus,
   deleteOfflineMemory,
+  getPendingOperations,
+  getFailedOperations,
+  updateOperationStatus,
+  deleteQueuedOperation,
+  getOfflineMemoryCount,
+  getQueuedOperationCount,
+  type QueuedOperation,
 } from './offline-store';
 
-type SyncListener = (status: { pending: number; syncing: boolean; lastSynced?: string }) => void;
+type SyncListener = (status: {
+  pending: number;
+  syncing: boolean;
+  lastSynced?: string;
+  error?: string;
+}) => void;
 
 let listeners: SyncListener[] = [];
 let isSyncing = false;
 let syncInterval: ReturnType<typeof setInterval> | null = null;
 
-function notify(status: { pending: number; syncing: boolean; lastSynced?: string }) {
+function notify(status: { pending: number; syncing: boolean; lastSynced?: string; error?: string }) {
   listeners.forEach((fn) => fn(status));
 }
 
@@ -27,7 +39,17 @@ export function onSyncStatusChange(fn: SyncListener): () => void {
   };
 }
 
-async function syncOneMemory(memory: Awaited<ReturnType<typeof getPendingMemories>>[0]): Promise<boolean> {
+/** Exponential backoff: skip if last attempt was too recent */
+function shouldRetry(retryCount: number, lastAttempt?: string): boolean {
+  if (!lastAttempt) return true;
+  const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 5 * 60 * 1000); // max 5 min
+  const elapsed = Date.now() - new Date(lastAttempt).getTime();
+  return elapsed >= backoffMs;
+}
+
+async function syncOneMemory(
+  memory: Awaited<ReturnType<typeof getPendingMemories>>[0]
+): Promise<boolean> {
   try {
     await updateMemorySyncStatus(memory.id, 'syncing');
 
@@ -45,11 +67,10 @@ async function syncOneMemory(memory: Awaited<ReturnType<typeof getPendingMemorie
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
-
       mediaUrl = filePath;
     }
 
-    // Try AI mood analysis if not already done
+    // AI mood analysis (non-blocking)
     let finalAnalysis = memory.ai_analysis;
     let finalMood = memory.mood;
     if (!finalAnalysis && (memory.content || mediaUrl)) {
@@ -66,7 +87,23 @@ async function syncOneMemory(memory: Awaited<ReturnType<typeof getPendingMemorie
       }
     }
 
-    // Insert into database
+    // Conflict detection: check if a memory with same date+title exists
+    if (memory.title) {
+      const { data: existing } = await supabase
+        .from('memories')
+        .select('id')
+        .eq('user_id', memory.user_id)
+        .eq('memory_date', memory.memory_date)
+        .eq('title', memory.title)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        // Mark as conflict — let user decide
+        await updateMemorySyncStatus(memory.id, 'conflict', 'A memory with this title and date already exists on the server.');
+        return false;
+      }
+    }
+
     const insertData: Record<string, unknown> = {
       user_id: memory.user_id,
       memory_type: memory.memory_type,
@@ -92,12 +129,57 @@ async function syncOneMemory(memory: Awaited<ReturnType<typeof getPendingMemorie
     const { error } = await supabase.from('memories').insert(insertData as any);
     if (error) throw error;
 
-    // Success - remove from offline store
     await deleteOfflineMemory(memory.id);
     return true;
   } catch (err: any) {
-    console.error('Sync failed for memory:', memory.id, err);
+    console.error('[Sync] Failed for memory:', memory.id, err);
     await updateMemorySyncStatus(memory.id, 'failed', err.message);
+    return false;
+  }
+}
+
+async function processQueuedOperation(op: QueuedOperation): Promise<boolean> {
+  try {
+    await updateOperationStatus(op.id, 'syncing');
+
+    switch (op.type) {
+      case 'delete_memory': {
+        const { error } = await supabase
+          .from('memories')
+          .delete()
+          .eq('id', op.payload.memory_id)
+          .eq('user_id', op.payload.user_id);
+        if (error) throw error;
+        break;
+      }
+      case 'update_memory': {
+        const { memory_id, user_id, ...updates } = op.payload;
+        const { error } = await supabase
+          .from('memories')
+          .update(updates)
+          .eq('id', memory_id)
+          .eq('user_id', user_id);
+        if (error) throw error;
+        break;
+      }
+      case 'toggle_public': {
+        const { error } = await supabase
+          .from('memories')
+          .update({ is_public: op.payload.is_public })
+          .eq('id', op.payload.memory_id)
+          .eq('user_id', op.payload.user_id);
+        if (error) throw error;
+        break;
+      }
+      default:
+        throw new Error(`Unknown operation type: ${op.type}`);
+    }
+
+    await deleteQueuedOperation(op.id);
+    return true;
+  } catch (err: any) {
+    console.error('[Sync] Op failed:', op.id, err);
+    await updateOperationStatus(op.id, 'failed', err.message);
     return false;
   }
 }
@@ -110,17 +192,21 @@ export async function syncAllPending(): Promise<{ synced: number; failed: number
   let failed = 0;
 
   try {
-    // Get pending and retry failed (max 3 retries)
+    // Sync memories
     const pending = await getPendingMemories();
-    const failedMemories = (await getFailedMemories()).filter((m) => m.retry_count < 3);
+    const failedMemories = (await getFailedMemories()).filter(
+      (m) => m.retry_count < 5 && shouldRetry(m.retry_count, m.last_attempt_at)
+    );
     const allToSync = [...pending, ...failedMemories];
 
-    if (allToSync.length === 0) {
-      isSyncing = false;
-      return { synced: 0, failed: 0 };
-    }
+    const totalPending =
+      allToSync.length +
+      (await getPendingOperations()).length +
+      (await getFailedOperations()).filter((o) => o.retry_count < 5).length;
 
-    notify({ pending: allToSync.length, syncing: true });
+    if (totalPending > 0) {
+      notify({ pending: totalPending, syncing: true });
+    }
 
     for (const memory of allToSync) {
       const success = await syncOneMemory(memory);
@@ -128,11 +214,23 @@ export async function syncAllPending(): Promise<{ synced: number; failed: number
       else failed++;
     }
 
+    // Process queued operations
+    const pendingOps = await getPendingOperations();
+    const failedOps = (await getFailedOperations()).filter((o) => o.retry_count < 5);
+    for (const op of [...pendingOps, ...failedOps]) {
+      const success = await processQueuedOperation(op);
+      if (success) synced++;
+      else failed++;
+    }
+
+    const remaining = (await getOfflineMemoryCount()) + (await getQueuedOperationCount());
     notify({
-      pending: failed,
+      pending: remaining,
       syncing: false,
       lastSynced: synced > 0 ? new Date().toISOString() : undefined,
     });
+  } catch (err: any) {
+    notify({ pending: 0, syncing: false, error: err.message });
   } finally {
     isSyncing = false;
   }
@@ -141,24 +239,21 @@ export async function syncAllPending(): Promise<{ synced: number; failed: number
 }
 
 export function startAutoSync(): void {
-  // Listen for online event
-  window.addEventListener('online', () => {
-    console.log('[Sync] Back online - syncing pending memories...');
+  const onOnline = () => {
+    console.log('[Sync] Back online — syncing...');
     syncAllPending();
-  });
+  };
 
-  // Periodic sync every 30 seconds when online
+  window.addEventListener('online', onOnline);
+
+  // Periodic sync every 30s when online
   if (syncInterval) clearInterval(syncInterval);
   syncInterval = setInterval(() => {
-    if (navigator.onLine) {
-      syncAllPending();
-    }
+    if (navigator.onLine) syncAllPending();
   }, 30000);
 
   // Initial sync
-  if (navigator.onLine) {
-    syncAllPending();
-  }
+  if (navigator.onLine) syncAllPending();
 }
 
 export function stopAutoSync(): void {
