@@ -68,7 +68,9 @@ interface Redemption {
 export function AdminCoupons() {
   const { toast } = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [redemptionsLoading, setRedemptionsLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export function AdminCoupons() {
 
   useEffect(() => {
     fetchCoupons();
+    fetchRedemptions();
   }, []);
 
   const fetchCoupons = async () => {
