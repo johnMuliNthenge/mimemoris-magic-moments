@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, isPast, parseISO } from 'date-fns';
+import { format, isPast, parseISO, formatDistanceToNow } from 'date-fns';
 import {
   Mail,
   Lock,
@@ -12,6 +12,9 @@ import {
   Clock,
   Send,
   Calendar as CalendarIcon,
+  Edit3,
+  Eye,
+  AlignLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +38,23 @@ interface FutureMessage {
   created_at: string;
 }
 
+function WordCounter({ text }: { text: string }) {
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const chars = text.length;
+  return (
+    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      <span className="flex items-center gap-1">
+        <AlignLeft className="w-3 h-3" />
+        {words} word{words !== 1 ? 's' : ''}
+      </span>
+      <span>{chars} character{chars !== 1 ? 's' : ''}</span>
+      {chars > 5000 && (
+        <span className="text-destructive font-medium">Max 5000 characters</span>
+      )}
+    </div>
+  );
+}
+
 export default function FutureMessages() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -43,6 +64,7 @@ export default function FutureMessages() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [previewMessage, setPreviewMessage] = useState<FutureMessage | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -53,6 +75,16 @@ export default function FutureMessages() {
     if (user) fetchMessages();
   }, [user]);
 
+  // Auto-mark delivered messages on load
+  useEffect(() => {
+    const delivered = messages.filter(m => !m.is_delivered && isPast(parseISO(m.deliver_at)));
+    if (delivered.length > 0) {
+      delivered.forEach(async (msg) => {
+        await supabase.from('future_messages').update({ is_delivered: true }).eq('id', msg.id);
+      });
+    }
+  }, [messages]);
+
   const fetchMessages = async () => {
     const { data } = await supabase
       .from('future_messages')
@@ -61,13 +93,7 @@ export default function FutureMessages() {
       .order('deliver_at', { ascending: true });
 
     if (data) {
-      // Mark newly delivered ones
-      const now = new Date();
-      const updated = (data as FutureMessage[]).map(m => ({
-        ...m,
-        is_delivered: m.is_delivered || isPast(parseISO(m.deliver_at)),
-      }));
-      setMessages(updated);
+      setMessages(data as FutureMessage[]);
     }
     setLoading(false);
   };
@@ -92,6 +118,11 @@ export default function FutureMessages() {
     e.preventDefault();
     if (!content.trim() || !deliverAt) return;
 
+    if (content.length > 5000) {
+      toast({ variant: 'destructive', title: 'Message too long', description: 'Maximum 5000 characters.' });
+      return;
+    }
+
     const deliverDate = new Date(deliverAt);
     if (deliverDate <= new Date()) {
       toast({ variant: 'destructive', title: t('future_msg_error_past') });
@@ -110,7 +141,7 @@ export default function FutureMessages() {
       if (error) {
         toast({ variant: 'destructive', title: 'Error', description: error.message });
       } else {
-        toast({ title: 'Message updated!' });
+        toast({ title: '✅ Message updated!' });
         resetForm();
         fetchMessages();
       }
@@ -136,11 +167,11 @@ export default function FutureMessages() {
   const handleDelete = async (id: string) => {
     await supabase.from('future_messages').delete().eq('id', id);
     setMessages(prev => prev.filter(m => m.id !== id));
-    toast({ title: t('delete') });
+    toast({ title: 'Message deleted' });
   };
 
-  const deliveredMessages = messages.filter(m => isPast(parseISO(m.deliver_at)));
-  const pendingMessages = messages.filter(m => !isPast(parseISO(m.deliver_at)));
+  const deliveredMessages = messages.filter(m => m.is_delivered || isPast(parseISO(m.deliver_at)));
+  const pendingMessages = messages.filter(m => !m.is_delivered && !isPast(parseISO(m.deliver_at)));
 
   return (
     <AppLayout>
@@ -163,7 +194,21 @@ export default function FutureMessages() {
           </Button>
         </div>
 
-        {/* Create Form */}
+        {/* Stats bar */}
+        {messages.length > 0 && (
+          <div className="flex gap-4 text-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>{pendingMessages.length} pending</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10">
+              <Unlock className="w-3.5 h-3.5 text-primary" />
+              <span>{deliveredMessages.length} delivered</span>
+            </div>
+          </div>
+        )}
+
+        {/* Create/Edit Form */}
         <AnimatePresence>
           {showForm && (
             <motion.div
@@ -175,7 +220,7 @@ export default function FutureMessages() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Send className="w-5 h-5 text-primary" />
-                    {t('future_msg_compose')}
+                    {editingId ? 'Edit Message' : t('future_msg_compose')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -195,8 +240,10 @@ export default function FutureMessages() {
                         className="min-h-32"
                         value={content}
                         onChange={e => setContent(e.target.value)}
+                        maxLength={5000}
                         required
                       />
+                      <WordCounter text={content} />
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">
@@ -210,12 +257,21 @@ export default function FutureMessages() {
                         min={new Date().toISOString().slice(0, 16)}
                         required
                       />
+                      {deliverAt && new Date(deliverAt) > new Date() && (
+                        <p className="text-xs text-muted-foreground">
+                          ⏰ Will be delivered {formatDistanceToNow(new Date(deliverAt), { addSuffix: true })}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-3 pt-2">
                       <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                         {t('cancel')}
                       </Button>
-                      <Button type="submit" className="flex-1 gradient-warm text-primary-foreground" disabled={saving}>
+                      <Button
+                        type="submit"
+                        className="flex-1 gradient-warm text-primary-foreground"
+                        disabled={saving || content.length > 5000}
+                      >
                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                         {editingId ? t('save') : t('future_msg_send')}
                       </Button>
@@ -255,7 +311,7 @@ export default function FutureMessages() {
                 <div className="space-y-3">
                   {pendingMessages.map(msg => (
                     <motion.div key={msg.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      <Card className="border-l-4 border-l-muted-foreground/50 opacity-80">
+                      <Card className="border-l-4 border-l-muted-foreground/50">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
@@ -265,19 +321,22 @@ export default function FutureMessages() {
                               <div>
                                 <h3 className="font-medium">{msg.title || t('future_msg_no_title')}</h3>
                                 <p className="text-sm text-muted-foreground mt-1">{t('future_msg_locked_content')}</p>
-                                <div className="flex items-center gap-2 mt-2">
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
                                   <Badge variant="outline" className="text-xs gap-1">
                                     <Clock className="w-3 h-3" />
                                     {t('future_msg_opens')} {format(parseISO(msg.deliver_at), 'PPP p')}
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {formatDistanceToNow(parseISO(msg.deliver_at), { addSuffix: true })}
                                   </Badge>
                                 </div>
                               </div>
                             </div>
                             <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => startEdit(msg)}>
-                                <Clock className="w-4 h-4 text-primary" />
+                              <Button variant="ghost" size="icon" onClick={() => startEdit(msg)} title="Edit">
+                                <Edit3 className="w-4 h-4 text-primary" />
                               </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)}>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)} title="Delete">
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
@@ -309,8 +368,20 @@ export default function FutureMessages() {
                               </div>
                               <div>
                                 <h3 className="font-medium">{msg.title || t('future_msg_no_title')}</h3>
-                                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap">{msg.content}</p>
-                                <div className="flex items-center gap-2 mt-2">
+                                <p className="text-sm text-foreground mt-1 whitespace-pre-wrap line-clamp-3">
+                                  {msg.content}
+                                </p>
+                                {msg.content.length > 200 && (
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="px-0 h-auto text-xs"
+                                    onClick={() => setPreviewMessage(msg)}
+                                  >
+                                    Read full message
+                                  </Button>
+                                )}
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
                                   <Badge variant="secondary" className="text-xs gap-1">
                                     <CalendarIcon className="w-3 h-3" />
                                     {t('future_msg_written')} {format(parseISO(msg.created_at), 'PPP')}
@@ -322,9 +393,14 @@ export default function FutureMessages() {
                                 </div>
                               </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => setPreviewMessage(msg)} title="View">
+                                <Eye className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)} title="Delete">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -335,6 +411,34 @@ export default function FutureMessages() {
             )}
           </div>
         )}
+
+        {/* Full Message Preview Dialog */}
+        <Dialog open={!!previewMessage} onOpenChange={(open) => !open && setPreviewMessage(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-primary" />
+                {previewMessage?.title || 'Your Message'}
+              </DialogTitle>
+            </DialogHeader>
+            {previewMessage && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Badge variant="secondary" className="text-xs">
+                    Written {format(parseISO(previewMessage.created_at), 'PPP')}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    Delivered {format(parseISO(previewMessage.deliver_at), 'PPP')}
+                  </Badge>
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{previewMessage.content}</p>
+                </div>
+                <WordCounter text={previewMessage.content} />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
