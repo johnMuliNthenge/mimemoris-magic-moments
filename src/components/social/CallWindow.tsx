@@ -121,7 +121,13 @@ export function CallWindow({
       if (remoteVideoRef.current) {
         const remote = remoteStream.current;
 
-        if (remote && remote.getTracks().length > 0) {
+        const hasVideoTrack = Boolean(remote?.getVideoTracks().length);
+        const hasAnyTrack = Boolean(remote?.getTracks().length);
+
+        // For video calls, only render main video when an actual remote video track exists
+        const canAttachToMainVideo = type === 'video' ? hasVideoTrack : hasAnyTrack;
+
+        if (remote && canAttachToMainVideo) {
           if (remoteVideoRef.current.srcObject !== remote) {
             console.log('[CallWindow] Attaching remote stream, tracks:', remote.getTracks().length);
             remoteVideoRef.current.srcObject = remote;
