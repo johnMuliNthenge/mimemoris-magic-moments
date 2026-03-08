@@ -35,9 +35,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
   const { pendingRequests } = useFriends();
+  const { messages: unreadMessages, friendRequests: unreadFriendRequests } = useUnreadCounts();
   const [isDark, setIsDark] = useState(false);
 
   const incomingRequestCount = pendingRequests.filter(r => r.is_follower).length;
+  const friendsTabBadge = incomingRequestCount + unreadMessages;
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav_home'), badge: 0 },
