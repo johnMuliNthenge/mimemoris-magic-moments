@@ -326,43 +326,41 @@ export function useWebRTC() {
   const createPeerConnection = useCallback(
     (onConnected: () => void) => {
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      const receiverRemoteStream = new MediaStream();
-      remoteStream.current = receiverRemoteStream;
+      const inboundRemoteStream = new MediaStream();
+      remoteStream.current = inboundRemoteStream;
 
-      const getLocalTracks = () => localStream.current?.getTracks() ?? [];
+      const attachRemoteTrack = (track: MediaStreamTrack) => {
+        if (track.readyState !== 'live') return;
 
-      const refreshRemoteFromReceivers = () => {
-        const localTracks = getLocalTracks();
-        const receiverTracks = pc
-          .getReceivers()
-          .map((receiver) => receiver.track)
-          .filter((track): track is MediaStreamTrack => Boolean(track) && track.readyState === 'live')
-          .filter((track) => !localTracks.some((localTrack) => localTrack === track));
+        const exists = inboundRemoteStream.getTracks().some((existing) => existing.id === track.id);
+        if (!exists) {
+          inboundRemoteStream.addTrack(track);
+          remoteStream.current = inboundRemoteStream;
+        }
+      };
 
-        receiverRemoteStream.getTracks().forEach((track) => {
-          if (!receiverTracks.some((incoming) => incoming.id === track.id)) {
-            receiverRemoteStream.removeTrack(track);
-          }
-        });
-
-        receiverTracks.forEach((track) => {
-          const exists = receiverRemoteStream.getTracks().some((existing) => existing.id === track.id);
-          if (!exists) receiverRemoteStream.addTrack(track);
-        });
-
-        remoteStream.current = receiverRemoteStream;
+      const detachRemoteTrack = (track: MediaStreamTrack) => {
+        const existing = inboundRemoteStream.getTracks().find((candidate) => candidate.id === track.id);
+        if (existing) {
+          inboundRemoteStream.removeTrack(existing);
+          remoteStream.current = inboundRemoteStream;
+        }
       };
 
       pc.ontrack = (event) => {
-        refreshRemoteFromReceivers();
+        event.streams.forEach((stream) => {
+          stream.getTracks().forEach(attachRemoteTrack);
+        });
 
         if (event.track) {
+          attachRemoteTrack(event.track);
+
           event.track.onunmute = () => {
-            refreshRemoteFromReceivers();
+            attachRemoteTrack(event.track);
           };
 
           event.track.onended = () => {
-            refreshRemoteFromReceivers();
+            detachRemoteTrack(event.track);
           };
         }
       };
@@ -384,7 +382,6 @@ export function useWebRTC() {
             clearTimeout(disconnectTimeout.current);
             disconnectTimeout.current = null;
           }
-          refreshRemoteFromReceivers();
           onConnected();
           return;
         }
@@ -417,7 +414,7 @@ export function useWebRTC() {
       peerConnection.current = pc;
       return pc;
     },
-    [cleanup, sendSignal, user?.id]
+    [sendSignal, user?.id]
   );
 
   const sendIncomingNotification = useCallback(
@@ -597,11 +594,32 @@ export function useWebRTC() {
 
       pendingCandidates.current = [];
 
-      createPeerConnection(() => {
+      const shouldAcquireLocalMedia =
+        !localStream.current ||
+        !localStream.current.getTracks().some((track) => track.readyState === 'live');
+
+      if (shouldAcquireLocalMedia) {
+        const { resolvedType } = await getMedia(initialCallType);
+        if (resolvedType !== initialCallType) {
+          setCallState((prev) => ({ ...prev, type: resolvedType }));
+        }
+      }
+
+      const pc = createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
         markCallConnected();
         startDurationTimer();
       });
+
+      const activeStream = localStream.current;
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => {
+          const alreadySending = pc.getSenders().some((sender) => sender.track?.id === track.id);
+          if (!alreadySending) {
+            pc.addTrack(track, activeStream);
+          }
+        });
+      }
 
       const channelName = getChannelName(remoteUserId);
       const channel = supabase.channel(channelName, {
@@ -612,31 +630,11 @@ export function useWebRTC() {
         if (!peerConnection.current || !payload?.offer || payload?.from !== remoteUserId) return;
 
         try {
+          if (peerConnection.current.signalingState === 'have-remote-offer') {
+            return;
+          }
+
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
-
-          const shouldAcquireLocalMedia =
-            !localStream.current ||
-            !localStream.current.getTracks().some((track) => track.readyState === 'live');
-
-          if (shouldAcquireLocalMedia) {
-            const { stream, resolvedType } = await getMedia(initialCallType);
-            if (resolvedType !== initialCallType) {
-              setCallState((prev) => ({ ...prev, type: resolvedType }));
-            }
-          }
-
-          const activeStream = localStream.current;
-          if (activeStream) {
-            activeStream.getTracks().forEach((track) => {
-              const alreadySending = peerConnection.current
-                ?.getSenders()
-                .some((sender) => sender.track === track);
-
-              if (!alreadySending) {
-                peerConnection.current?.addTrack(track, activeStream);
-              }
-            });
-          }
 
           for (const candidate of pendingCandidates.current) {
             await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -765,51 +763,81 @@ export function useWebRTC() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const incomingChannel = supabase.channel(`incoming-calls-${user.id}`, {
-      config: { broadcast: { self: false } },
-    });
+    let isMounted = true;
+    let incomingChannel: ReturnType<typeof supabase.channel> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    incomingChannel.on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
-      const callerId = payload?.from as string | undefined;
-      const incomingType = payload?.callType as CallType | undefined;
+    const connectIncomingChannel = () => {
+      if (!isMounted || !user?.id) return;
 
-      if (!callerId || callerId === user.id || (incomingType !== 'audio' && incomingType !== 'video')) return;
-
-      setCallState((prev) => {
-        if (prev.status !== 'idle') return prev;
-
-        void beginCallHistory(callerId, 'incoming', incomingType);
-
-        return {
-          status: 'ringing',
-          type: incomingType,
-          remoteUserId: callerId,
-          remoteUserName: payload.callerName,
-          remoteUserAvatar: payload.callerAvatar,
-          isIncoming: true,
-          duration: 0,
-        };
+      incomingChannel = supabase.channel(`incoming-calls-${user.id}`, {
+        config: { broadcast: { self: false } },
       });
-    });
 
-    incomingChannel.on('broadcast', { event: 'cancel-call' }, ({ payload }) => {
-      const current = callStateRef.current;
-      if (
-        current.status === 'ringing' &&
-        current.isIncoming &&
-        current.remoteUserId &&
-        payload?.from === current.remoteUserId
-      ) {
-        cleanup('missed');
-      }
-    });
+      incomingChannel.on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
+        const callerId = payload?.from as string | undefined;
+        const incomingType = payload?.callType as CallType | undefined;
 
-    incomingChannel.subscribe((status) => {
-      console.log('[WebRTC] Incoming channel status:', status);
-    });
+        if (!callerId || callerId === user.id || (incomingType !== 'audio' && incomingType !== 'video')) return;
+
+        setCallState((prev) => {
+          if (prev.status !== 'idle') return prev;
+
+          void beginCallHistory(callerId, 'incoming', incomingType);
+
+          return {
+            status: 'ringing',
+            type: incomingType,
+            remoteUserId: callerId,
+            remoteUserName: payload.callerName,
+            remoteUserAvatar: payload.callerAvatar,
+            isIncoming: true,
+            duration: 0,
+          };
+        });
+      });
+
+      incomingChannel.on('broadcast', { event: 'cancel-call' }, ({ payload }) => {
+        const current = callStateRef.current;
+        if (
+          current.status === 'ringing' &&
+          current.isIncoming &&
+          current.remoteUserId &&
+          payload?.from === current.remoteUserId
+        ) {
+          cleanup('missed');
+        }
+      });
+
+      incomingChannel.subscribe((status) => {
+        console.log('[WebRTC] Incoming channel status:', status);
+
+        if (!isMounted || !incomingChannel) return;
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          supabase.removeChannel(incomingChannel);
+          incomingChannel = null;
+
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = setTimeout(() => {
+            connectIncomingChannel();
+          }, 1500);
+        }
+      });
+    };
+
+    connectIncomingChannel();
 
     return () => {
-      supabase.removeChannel(incomingChannel);
+      isMounted = false;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (incomingChannel) {
+        supabase.removeChannel(incomingChannel);
+        incomingChannel = null;
+      }
     };
   }, [user?.id, beginCallHistory, cleanup]);
 
