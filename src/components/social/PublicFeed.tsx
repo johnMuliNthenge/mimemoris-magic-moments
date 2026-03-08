@@ -448,7 +448,7 @@ export function PublicFeed() {
           {user && (
             <div className="flex gap-2 pt-4 border-t border-border">
               <Input
-                placeholder="Write a comment..."
+                placeholder={t('write_comment')}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
