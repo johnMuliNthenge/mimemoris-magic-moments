@@ -233,45 +233,18 @@ export function useGroupChat(groupId?: string) {
   const joinGroupByCode = async (inviteCode: string) => {
     if (!user) return { error: 'Not authenticated' };
 
-    // Get group by invite code
-    const { data: groupData } = await supabase
-      .rpc('get_group_by_invite_code', { code: inviteCode });
-
-    if (!groupData || groupData.length === 0) {
-      return { error: 'Invalid invite code' };
-    }
-
-    const group = groupData[0];
-
-    // Check if already a member
-    const { data: existingMember } = await supabase
-      .from('chat_group_members')
-      .select('id')
-      .eq('group_id', group.id)
-      .eq('user_id', user.id)
-      .single();
-
-    if (existingMember) {
-      return { error: 'Already a member of this group' };
-    }
-
-    // Check if group is full
-    if (group.member_count >= 500) {
-      return { error: 'Group is full' };
-    }
-
-    const { error } = await supabase
-      .from('chat_group_members')
-      .insert({
-        group_id: group.id,
-        user_id: user.id,
-        role: 'member'
-      });
+    // Use secure server-side RPC for all validation and joining
+    const { data, error } = await supabase
+      .rpc('join_group_by_invite_code', { _invite_code: inviteCode }) as { data: any; error: any };
 
     if (error) return { error: error.message };
 
+    if (data?.error) {
+      return { error: data.error, groupId: data.group_id || null };
+    }
+
     await fetchGroups();
-    return { error: null, groupId: group.id };
+    return { error: null, groupId: data.group_id };
   };
 
   const sendMessage = async (content: string, replyToId?: string, mediaUrl?: string, mediaType?: string) => {
