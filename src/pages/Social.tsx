@@ -8,6 +8,7 @@ import { FriendsList } from '@/components/social/FriendsList';
 import { ChatWindow } from '@/components/social/ChatWindow';
 import { PublicFeed } from '@/components/social/PublicFeed';
 import { GroupChat } from '@/components/social/GroupChat';
+import { WhatupFeed } from '@/components/social/WhatupFeed';
 import { CreateGroupDialog } from '@/components/social/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/social/JoinGroupDialog';
 
