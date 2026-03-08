@@ -351,7 +351,7 @@ export default function Dashboard() {
                   {t('nav_collaborate')}
                 </CardTitle>
                 <CardDescription>
-                  Create shared memories with friends and family
+                  {t('collab_desc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
