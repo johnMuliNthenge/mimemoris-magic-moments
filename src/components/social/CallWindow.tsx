@@ -289,6 +289,27 @@ export function CallWindow({
                   </motion.div>
                 )}
 
+                {status === 'connected' && (
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <Button
+                      size="lg"
+                      variant={isRecording ? 'destructive' : 'secondary'}
+                      className="rounded-full w-12 h-12 relative"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      title={isRecording ? 'Stop recording' : 'Record call'}
+                    >
+                      <Circle className={cn("w-5 h-5", isRecording && "fill-current")} />
+                      {isRecording && (
+                        <motion.div
+                          animate={{ opacity: [1, 0.3, 1] }}
+                          transition={{ duration: 1.2, repeat: Infinity }}
+                          className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-destructive border-2 border-background"
+                        />
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
+
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                   <Button
                     size="lg"
