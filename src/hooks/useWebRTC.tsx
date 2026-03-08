@@ -610,7 +610,7 @@ export function useWebRTC() {
 
       pendingCandidates.current = [];
 
-      const pc = createPeerConnection(() => {
+      createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
         markCallConnected();
         startDurationTimer();
