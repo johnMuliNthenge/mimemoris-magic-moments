@@ -329,13 +329,13 @@ export function useWebRTC() {
       const receiverRemoteStream = new MediaStream();
       remoteStream.current = receiverRemoteStream;
 
-      const getLocalTrackIds = () => new Set(localStream.current?.getTracks().map((track) => track.id) ?? []);
+      const getLocalTracks = () => localStream.current?.getTracks() ?? [];
 
       const syncRemoteTracks = (tracks: MediaStreamTrack[]) => {
-        const localTrackIds = getLocalTrackIds();
+        const localTracks = getLocalTracks();
         const incomingTracks = tracks
           .filter((track): track is MediaStreamTrack => Boolean(track) && track.readyState === 'live')
-          .filter((track) => !localTrackIds.has(track.id));
+          .filter((track) => !localTracks.some((localTrack) => localTrack === track));
 
         if (incomingTracks.length === 0) return;
 
