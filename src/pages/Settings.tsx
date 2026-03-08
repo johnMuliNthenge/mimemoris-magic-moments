@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { SocialImportSettings } from '@/components/settings/SocialImportSettings';
 import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { SyncQueueManager } from '@/components/pwa/SyncQueueManager';
 
 const languages = [
   { code: 'en', name: 'English' },
