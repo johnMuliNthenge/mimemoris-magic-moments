@@ -309,61 +309,62 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
         </div>
       </div>
 
-      {/* Call History */}
-      <div className="px-4 py-2 border-b border-border bg-muted/20">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Recent calls</p>
+      {/* Call History (toggleable) */}
+      {showCallHistory && (
+        <div className="px-4 py-2 border-b border-border bg-muted/20 max-h-48 overflow-y-auto">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Call history with {selectedUserName || 'this user'}</p>
 
-        {callHistoryLoading ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            Loading call history...
-          </div>
-        ) : callHistory.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No calls yet with this user.</p>
-        ) : (
-          <div className="space-y-1">
-            {callHistory.slice(0, 4).map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between rounded-md bg-background px-2.5 py-1.5 border border-border"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {entry.direction === 'incoming' ? (
-                    <PhoneIncoming className="w-3.5 h-3.5 text-muted-foreground" />
-                  ) : (
-                    <PhoneOutgoing className="w-3.5 h-3.5 text-muted-foreground" />
-                  )}
-                  <p className="text-xs truncate">
-                    <span className="font-medium capitalize">{entry.call_type}</span>
-                    <span className="text-muted-foreground"> · {entry.direction}</span>
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={cn(
-                      'text-[11px] font-medium capitalize',
-                      entry.status === 'completed' || entry.status === 'connected'
-                        ? 'text-success'
-                        : entry.status === 'ringing'
-                          ? 'text-warning'
-                          : 'text-destructive'
+          {callHistoryLoading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Loading...
+            </div>
+          ) : callHistory.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No calls yet with this user.</p>
+          ) : (
+            <div className="space-y-1">
+              {callHistory.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between rounded-md bg-background px-2.5 py-1.5 border border-border"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {entry.direction === 'incoming' ? (
+                      <PhoneIncoming className="w-3.5 h-3.5 text-muted-foreground" />
+                    ) : (
+                      <PhoneOutgoing className="w-3.5 h-3.5 text-muted-foreground" />
                     )}
-                  >
-                    {entry.status}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                    <Clock3 className="w-3 h-3" />
-                    {entry.duration_seconds > 0
-                      ? formatDuration(entry.duration_seconds)
-                      : format(new Date(entry.started_at), 'MMM d')}
-                  </span>
+                    <p className="text-xs truncate">
+                      <span className="font-medium capitalize">{entry.call_type}</span>
+                      <span className="text-muted-foreground"> · {entry.direction}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={cn(
+                        'text-[11px] font-medium capitalize',
+                        entry.status === 'completed' || entry.status === 'connected'
+                          ? 'text-success'
+                          : entry.status === 'ringing'
+                            ? 'text-warning'
+                            : 'text-destructive'
+                      )}
+                    >
+                      {entry.status}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <Clock3 className="w-3 h-3" />
+                      {entry.duration_seconds > 0
+                        ? formatDuration(entry.duration_seconds)
+                        : format(new Date(entry.started_at), 'MMM d')}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
