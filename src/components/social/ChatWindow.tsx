@@ -199,6 +199,7 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
 
 export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvatar, onBack }: ChatWindowProps) {
   const { user } = useAuth();
+  const [showCallHistory, setShowCallHistory] = useState(false);
   const { messages, sendMessage, editMessage, deleteMessage, canEditMessage, loading } = useChat(
     selectedUserId || undefined
   );
