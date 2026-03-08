@@ -397,7 +397,7 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-3">
-                      No collaborations yet
+                      {t('no_collaborations_yet')}
                     </p>
                   )}
                 </div>
