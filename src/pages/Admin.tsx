@@ -26,6 +26,10 @@ interface DashboardStats {
   totalMemories: number;
   activeSubscriptions: number;
   monthlyRevenue: number;
+  prevUsers: number;
+  prevMemories: number;
+  prevSubscriptions: number;
+  prevRevenue: number;
 }
 
 export default function AdminDashboard() {
