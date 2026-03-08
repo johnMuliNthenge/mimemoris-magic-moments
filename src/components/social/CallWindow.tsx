@@ -122,10 +122,22 @@ export function CallWindow({
       if (remoteVideoRef.current) {
         const remote = remoteStream.current;
         const localTrackIds = new Set(localStream.current?.getTracks().map((track) => track.id) ?? []);
+        const remoteDisplayStream = remoteDisplayStreamRef.current;
 
         const remoteOnlyTracks = (remote?.getTracks() ?? []).filter(
           (track) => track.readyState === 'live' && !localTrackIds.has(track.id)
         );
+
+        remoteDisplayStream.getTracks().forEach((track) => {
+          if (!remoteOnlyTracks.some((incoming) => incoming.id === track.id)) {
+            remoteDisplayStream.removeTrack(track);
+          }
+        });
+
+        remoteOnlyTracks.forEach((track) => {
+          const exists = remoteDisplayStream.getTracks().some((existing) => existing.id === track.id);
+          if (!exists) remoteDisplayStream.addTrack(track);
+        });
 
         const hasVideoTrack = remoteOnlyTracks.some((track) => track.kind === 'video');
         const hasAnyTrack = remoteOnlyTracks.length > 0;
@@ -133,10 +145,10 @@ export function CallWindow({
         // For video calls, only render main video when an actual non-local remote video track exists
         const canAttachToMainVideo = type === 'video' ? hasVideoTrack : hasAnyTrack;
 
-        if (remote && canAttachToMainVideo) {
-          if (remoteVideoRef.current.srcObject !== remote) {
-            console.log('[CallWindow] Attaching remote stream, tracks:', remote.getTracks().length);
-            remoteVideoRef.current.srcObject = remote;
+        if (canAttachToMainVideo) {
+          if (remoteVideoRef.current.srcObject !== remoteDisplayStream) {
+            console.log('[CallWindow] Attaching remote stream, tracks:', remoteDisplayStream.getTracks().length);
+            remoteVideoRef.current.srcObject = remoteDisplayStream;
           }
 
           if (remoteVideoRef.current.paused) {
@@ -148,15 +160,15 @@ export function CallWindow({
         }
       }
 
-      // Audio-only: attach remote stream to audio element
+      // Audio-only: attach filtered remote stream to audio element
       if (
         remoteAudioRef.current &&
         type === 'audio' &&
         status === 'connected' &&
-        remoteStream.current &&
-        remoteAudioRef.current.srcObject !== remoteStream.current
+        remoteDisplayStreamRef.current.getTracks().length > 0 &&
+        remoteAudioRef.current.srcObject !== remoteDisplayStreamRef.current
       ) {
-        remoteAudioRef.current.srcObject = remoteStream.current;
+        remoteAudioRef.current.srcObject = remoteDisplayStreamRef.current;
       }
     }, 200);
 
