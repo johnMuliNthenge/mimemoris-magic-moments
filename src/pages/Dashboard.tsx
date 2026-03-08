@@ -296,13 +296,13 @@ export default function Dashboard() {
               <CardContent className="space-y-4">
                 {recentMemories.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
-                    <p>No memories yet</p>
+                    <p>{t('no_memories_yet')}</p>
                     <Button 
                       variant="link" 
                       onClick={() => navigate('/memories/new')}
                       className="mt-2"
                     >
-                      Create your first memory
+                      {t('create_first_memory')}
                     </Button>
                   </div>
                 ) : (
