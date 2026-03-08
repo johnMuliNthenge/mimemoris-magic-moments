@@ -124,7 +124,7 @@ export function NotificationBell() {
                       <span className="font-medium">
                         {notification.from_profile?.full_name || 'Someone'}
                       </span>{' '}
-                      <span className="text-muted-foreground">{notification.content}</span>
+                      <span className="text-muted-foreground">{getNotificationContent(notification)}</span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {format(new Date(notification.created_at), 'MMM d, HH:mm')}
