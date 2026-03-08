@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PhoneOff, Video, VideoOff, Mic, MicOff, PhoneIncoming } from 'lucide-react';
+import { PhoneOff, Video, VideoOff, Mic, MicOff, PhoneIncoming, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import type { CallStatus, CallType } from '@/hooks/useWebRTC';
 
 interface CallWindowProps {
