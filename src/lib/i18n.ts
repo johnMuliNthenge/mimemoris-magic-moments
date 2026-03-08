@@ -938,6 +938,7 @@ const resources = {
 
       ...analyticsKeys.sw,
       ...timelockKeys.sw,
+      ...notificationKeys.sw,
     }
   },
   zh: {
