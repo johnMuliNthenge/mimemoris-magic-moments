@@ -39,6 +39,10 @@ export default function AdminDashboard() {
     totalMemories: 0,
     activeSubscriptions: 0,
     monthlyRevenue: 0,
+    prevUsers: 0,
+    prevMemories: 0,
+    prevSubscriptions: 0,
+    prevRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
