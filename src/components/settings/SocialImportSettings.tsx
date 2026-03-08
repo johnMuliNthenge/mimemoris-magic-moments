@@ -242,7 +242,82 @@ export function SocialImportSettings() {
             </div>
           );
         })}
+          </TabsContent>
+
+          <TabsContent value="history">
+            <ImportHistoryTab />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
+  );
+}
+
+function ImportHistoryTab() {
+  const { user } = useAuth();
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) fetchLogs();
+  }, [user]);
+
+  const fetchLogs = async () => {
+    const { data } = await supabase
+      .from('social_import_logs')
+      .select('*')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setLogs(data || []);
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <History className="w-10 h-10 mx-auto mb-3 opacity-50" />
+        <p className="font-medium">No import history</p>
+        <p className="text-sm mt-1">Messages you send to connected platforms will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 max-h-80 overflow-y-auto">
+      {logs.map(log => (
+        <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
+          <div className={cn(
+            'p-1.5 rounded-full',
+            log.status === 'success' ? 'bg-success/10' : log.status === 'failed' ? 'bg-destructive/10' : 'bg-muted'
+          )}>
+            {log.status === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-success" />
+            ) : log.status === 'failed' ? (
+              <AlertCircle className="w-4 h-4 text-destructive" />
+            ) : (
+              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium capitalize">{log.platform}</p>
+            {log.error_message && (
+              <p className="text-xs text-destructive truncate">{log.error_message}</p>
+            )}
+          </div>
+          <Badge variant="outline" className="text-xs shrink-0">
+            {format(parseISO(log.created_at), 'MMM d, HH:mm')}
+          </Badge>
+        </div>
+      ))}
+    </div>
   );
 }
