@@ -27,7 +27,6 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { CallStatus } from '@/hooks/useWebRTC';
-import { toast } from 'sonner';
 
 interface ChatWindowProps {
   selectedUserId: string | null;
