@@ -106,6 +106,24 @@ export function useWhatup() {
     } else {
       await supabase.from('whatup_likes').insert({ post_id: postId, user_id: user.id });
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, is_liked: true, likes_count: p.likes_count + 1 } : p));
+
+      // Notify post owner about the like
+      if (post.user_id !== user.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const likerName = profile?.full_name || 'Someone';
+        await supabase.from('notifications').insert({
+          user_id: post.user_id,
+          from_user_id: user.id,
+          type: 'trending_like',
+          content: `${likerName} liked your Trending video`,
+          reference_id: postId,
+        });
+      }
     }
   };
 
