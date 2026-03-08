@@ -72,6 +72,22 @@ export default function FutureMessages() {
     setLoading(false);
   };
 
+  const startEdit = (msg: FutureMessage) => {
+    setEditingId(msg.id);
+    setTitle(msg.title || '');
+    setContent(msg.content);
+    setDeliverAt(msg.deliver_at.slice(0, 16));
+    setShowForm(true);
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setContent('');
+    setDeliverAt('');
+    setEditingId(null);
+    setShowForm(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() || !deliverAt) return;
@@ -83,22 +99,36 @@ export default function FutureMessages() {
     }
 
     setSaving(true);
-    const { error } = await supabase.from('future_messages').insert({
-      user_id: user!.id,
-      title: title.trim() || null,
-      content: content.trim(),
-      deliver_at: deliverDate.toISOString(),
-    });
 
-    if (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    if (editingId) {
+      const { error } = await supabase.from('future_messages').update({
+        title: title.trim() || null,
+        content: content.trim(),
+        deliver_at: deliverDate.toISOString(),
+      }).eq('id', editingId);
+
+      if (error) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+      } else {
+        toast({ title: 'Message updated!' });
+        resetForm();
+        fetchMessages();
+      }
     } else {
-      toast({ title: t('future_msg_saved') });
-      setTitle('');
-      setContent('');
-      setDeliverAt('');
-      setShowForm(false);
-      fetchMessages();
+      const { error } = await supabase.from('future_messages').insert({
+        user_id: user!.id,
+        title: title.trim() || null,
+        content: content.trim(),
+        deliver_at: deliverDate.toISOString(),
+      });
+
+      if (error) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+      } else {
+        toast({ title: t('future_msg_saved') });
+        resetForm();
+        fetchMessages();
+      }
     }
     setSaving(false);
   };
