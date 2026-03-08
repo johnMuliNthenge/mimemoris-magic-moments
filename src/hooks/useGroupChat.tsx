@@ -159,6 +159,8 @@ export function useGroupChat(groupId?: string) {
       }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as GroupMessage;
+          const signedMediaUrl = await signSingleMediaUrl(newMsg.media_url || null);
+
           // Fetch sender profile
           const { data: profile } = await supabase
             .from('profiles')
@@ -166,10 +168,11 @@ export function useGroupChat(groupId?: string) {
             .eq('user_id', newMsg.sender_id)
             .single();
           
-          setMessages(prev => [...prev, { ...newMsg, sender_profile: profile || undefined }]);
+          setMessages(prev => [...prev, { ...newMsg, media_url: signedMediaUrl, sender_profile: profile || undefined }]);
         } else if (payload.eventType === 'UPDATE') {
           const updatedMsg = payload.new as GroupMessage;
-          setMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg } : m));
+          const signedMediaUrl = await signSingleMediaUrl(updatedMsg.media_url || null);
+          setMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg, media_url: signedMediaUrl } : m));
         } else if (payload.eventType === 'DELETE') {
           const deletedMsg = payload.old as { id: string };
           setMessages(prev => prev.filter(m => m.id !== deletedMsg.id));
