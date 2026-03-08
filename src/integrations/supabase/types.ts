@@ -1218,6 +1218,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_system_notification: {
+        Args: {
+          _content: string
+          _from_user_id?: string
+          _reference_id?: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
       get_active_social_platforms: {
         Args: never
         Returns: {
@@ -1225,6 +1235,20 @@ export type Database = {
           display_name: string
           is_active: boolean
           platform: string
+        }[]
+      }
+      get_collaboration_details: {
+        Args: { _collaboration_id: string }
+        Returns: {
+          created_at: string
+          ended_at: string
+          host_user_id: string
+          id: string
+          is_active: boolean
+          otp_code: string
+          otp_expires_at: string
+          session_date: string
+          title: string
         }[]
       }
       get_group_by_invite_code: {
@@ -1271,6 +1295,10 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      join_collaboration_with_otp: {
+        Args: { _collaboration_id: string; _otp_code: string }
+        Returns: boolean
+      }
       search_users_for_discovery: {
         Args: { page_num?: number; page_size?: number; search_term?: string }
         Returns: {
@@ -1278,6 +1306,15 @@ export type Database = {
           full_name: string
           user_id: string
         }[]
+      }
+      upsert_user_subscription: {
+        Args: {
+          _period_end?: string
+          _plan_id: string
+          _status?: string
+          _user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
