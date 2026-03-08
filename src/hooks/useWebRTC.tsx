@@ -594,11 +594,32 @@ export function useWebRTC() {
 
       pendingCandidates.current = [];
 
-      createPeerConnection(() => {
+      const shouldAcquireLocalMedia =
+        !localStream.current ||
+        !localStream.current.getTracks().some((track) => track.readyState === 'live');
+
+      if (shouldAcquireLocalMedia) {
+        const { resolvedType } = await getMedia(initialCallType);
+        if (resolvedType !== initialCallType) {
+          setCallState((prev) => ({ ...prev, type: resolvedType }));
+        }
+      }
+
+      const pc = createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
         markCallConnected();
         startDurationTimer();
       });
+
+      const activeStream = localStream.current;
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => {
+          const alreadySending = pc.getSenders().some((sender) => sender.track?.id === track.id);
+          if (!alreadySending) {
+            pc.addTrack(track, activeStream);
+          }
+        });
+      }
 
       const channelName = getChannelName(remoteUserId);
       const channel = supabase.channel(channelName, {
@@ -609,31 +630,11 @@ export function useWebRTC() {
         if (!peerConnection.current || !payload?.offer || payload?.from !== remoteUserId) return;
 
         try {
+          if (peerConnection.current.signalingState === 'have-remote-offer') {
+            return;
+          }
+
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
-
-          const shouldAcquireLocalMedia =
-            !localStream.current ||
-            !localStream.current.getTracks().some((track) => track.readyState === 'live');
-
-          if (shouldAcquireLocalMedia) {
-            const { stream, resolvedType } = await getMedia(initialCallType);
-            if (resolvedType !== initialCallType) {
-              setCallState((prev) => ({ ...prev, type: resolvedType }));
-            }
-          }
-
-          const activeStream = localStream.current;
-          if (activeStream) {
-            activeStream.getTracks().forEach((track) => {
-              const alreadySending = peerConnection.current
-                ?.getSenders()
-                .some((sender) => sender.track === track);
-
-              if (!alreadySending) {
-                peerConnection.current?.addTrack(track, activeStream);
-              }
-            });
-          }
 
           for (const candidate of pendingCandidates.current) {
             await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
