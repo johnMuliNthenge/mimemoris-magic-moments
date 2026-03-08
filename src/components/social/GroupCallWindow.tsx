@@ -61,11 +61,7 @@ function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
   );
 }
 
-interface GroupCallWindowInternalProps extends GroupCallWindowProps {
-  callHook: ReturnType<typeof useGroupCall>;
-}
-
-export function GroupCallWindow({ groupId, groupName, onClose, callHook }: GroupCallWindowInternalProps) {
+export function GroupCallWindow({ groupId, groupName, onClose, callHook }: GroupCallWindowProps) {
   const { user } = useAuth();
   const {
     status,
