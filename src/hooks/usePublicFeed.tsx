@@ -57,15 +57,17 @@ export function usePublicFeed() {
       return;
     }
 
+    const signedMemoriesData = await signMediaFields(memoriesData, ['media_url']);
+
     // Get user profiles
-    const userIds = [...new Set(memoriesData.map(m => m.user_id))];
+    const userIds = [...new Set(signedMemoriesData.map(m => m.user_id))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, full_name, avatar_url')
       .in('user_id', userIds);
 
     // Get likes count and user's likes
-    const memoryIds = memoriesData.map(m => m.id);
+    const memoryIds = signedMemoriesData.map(m => m.id);
     const { data: allLikes } = await supabase
       .from('memory_likes')
       .select('memory_id, user_id')
@@ -77,7 +79,7 @@ export function usePublicFeed() {
       .select('memory_id')
       .in('memory_id', memoryIds);
 
-    const memoriesWithInfo: PublicMemory[] = memoriesData.map(memory => {
+    const memoriesWithInfo: PublicMemory[] = signedMemoriesData.map(memory => {
       const profile = profiles?.find(p => p.user_id === memory.user_id);
       const memoryLikes = allLikes?.filter(l => l.memory_id === memory.id) || [];
       const memoryComments = allComments?.filter(c => c.memory_id === memory.id) || [];
