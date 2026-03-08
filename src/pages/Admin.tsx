@@ -309,9 +309,9 @@ function RecentActivityFeed() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
-            Recent Activity
+            {t('recent_activity')}
           </CardTitle>
-          <CardDescription>Latest actions across the platform</CardDescription>
+          <CardDescription>{t('latest_actions')}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
