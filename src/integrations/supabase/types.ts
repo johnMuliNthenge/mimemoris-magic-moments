@@ -421,6 +421,82 @@ export type Database = {
         }
         Relationships: []
       }
+      group_call_participants: {
+        Row: {
+          call_id: string
+          id: string
+          joined_at: string
+          left_at: string | null
+          user_id: string
+          was_kicked: boolean | null
+        }
+        Insert: {
+          call_id: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          user_id: string
+          was_kicked?: boolean | null
+        }
+        Update: {
+          call_id?: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          user_id?: string
+          was_kicked?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_call_participants_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "group_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_calls: {
+        Row: {
+          call_type: string
+          created_at: string
+          ended_at: string | null
+          group_id: string
+          id: string
+          started_at: string
+          started_by: string
+          status: string
+        }
+        Insert: {
+          call_type?: string
+          created_at?: string
+          ended_at?: string | null
+          group_id: string
+          id?: string
+          started_at?: string
+          started_by: string
+          status?: string
+        }
+        Update: {
+          call_type?: string
+          created_at?: string
+          ended_at?: string | null
+          group_id?: string
+          id?: string
+          started_at?: string
+          started_by?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_calls_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "chat_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       helpdesk_config: {
         Row: {
           created_at: string

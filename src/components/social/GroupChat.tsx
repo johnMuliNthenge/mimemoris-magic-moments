@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Link, QrCode, LogOut, Image, Play } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Link, QrCode, LogOut, Image, Play, Phone, Video as VideoIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroupChat } from '@/hooks/useGroupChat';
 import { AddMembersDialog } from './AddMembersDialog';
+import { GroupCallWindow } from './GroupCallWindow';
 import { MediaPlayer } from './MediaPlayer';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -18,6 +19,7 @@ import { toast } from 'sonner';
 import QRCode from 'react-qr-code';
 import { supabase } from '@/integrations/supabase/client';
 import { compressImage } from '@/lib/media-utils';
+import { useGroupCall } from '@/hooks/useGroupCall';
 
 interface GroupChatProps {
   groupId: string;
@@ -249,8 +251,10 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showCallWindow, setShowCallWindow] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { activeCall } = useGroupCall(groupId);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -404,8 +408,11 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Invite options */}
+        <div className="flex items-center gap-1">
+          {/* Call buttons */}
+          <Button variant="ghost" size="icon" onClick={() => setShowCallWindow(true)} title="Start or join call">
+            <Phone className="w-5 h-5" />
+          </Button>
           <Dialog open={showQR} onOpenChange={setShowQR}>
             <DialogTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -505,6 +512,22 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           </Sheet>
         </div>
       </div>
+
+      {/* Active call banner */}
+      {activeCall && !showCallWindow && (
+        <div className="px-4 py-2 bg-green-600/10 border-b border-green-600/20 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <Phone className="w-4 h-4 text-green-600 animate-pulse" />
+            <span className="font-medium text-green-700 dark:text-green-400">
+              {activeCall.call_type === 'video' ? 'Video' : 'Audio'} call in progress
+            </span>
+          </div>
+          <Button size="sm" variant="outline" className="gap-1 border-green-600 text-green-700 dark:text-green-400 hover:bg-green-600/10" onClick={() => setShowCallWindow(true)}>
+            <Phone className="w-3 h-3" />
+            Join
+          </Button>
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
@@ -618,6 +641,15 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           </Button>
         </div>
       </div>
+
+      {/* Group Call Window */}
+      {showCallWindow && (
+        <GroupCallWindow
+          groupId={groupId}
+          groupName={currentGroup.name}
+          onClose={() => setShowCallWindow(false)}
+        />
+      )}
     </div>
   );
 }
