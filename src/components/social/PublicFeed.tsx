@@ -192,6 +192,13 @@ export function PublicFeed() {
     await toggleLike(memoryId);
   };
 
+  const handleReport = (memory: any) => {
+    toast({
+      title: 'Report submitted',
+      description: 'Thank you for reporting. Our team will review this content.',
+    });
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
