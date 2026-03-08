@@ -224,6 +224,47 @@ export default function SettingsPage() {
           <SocialImportSettings />
         </motion.div>
 
+        {/* Notification Preferences */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.27 }}
+        >
+          <Card className="border-border shadow-soft">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-primary" />
+                Notification Preferences
+              </CardTitle>
+              <CardDescription>
+                Choose which notifications you want to receive
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[
+                { key: 'likes' as const, label: 'Likes', desc: 'When someone likes your memory or post' },
+                { key: 'comments' as const, label: 'Comments', desc: 'When someone comments on your content' },
+                { key: 'mentions' as const, label: 'Mentions', desc: 'When someone @mentions you' },
+                { key: 'friend_requests' as const, label: 'Friend Requests', desc: 'When someone sends you a friend request' },
+                { key: 'messages' as const, label: 'Messages', desc: 'When you receive a new chat message' },
+                { key: 'trending' as const, label: 'Trending', desc: 'Activity on your Trending posts' },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  </div>
+                  <Switch
+                    checked={notifPrefs[item.key]}
+                    onCheckedChange={(val) => updateNotifPref(item.key, val)}
+                    disabled={notifLoading}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Theme Settings */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
