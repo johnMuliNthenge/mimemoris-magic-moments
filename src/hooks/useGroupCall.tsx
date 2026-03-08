@@ -656,6 +656,16 @@ export function useGroupCall(groupId: string) {
     }
   };
 
+  const toggleHandRaise = () => {
+    const newRaised = !handRaised;
+    setHandRaised(newRaised);
+    signalingChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'hand-raise',
+      payload: { userId: user!.id, raised: newRaised },
+    });
+  };
+
   return {
     status,
     activeCall,
@@ -666,6 +676,8 @@ export function useGroupCall(groupId: string) {
     isMuted,
     isVideoOff,
     isScreenSharing,
+    handRaised,
+    raisedHands,
     startCall,
     joinCall,
     leaveCall,
@@ -673,5 +685,6 @@ export function useGroupCall(groupId: string) {
     toggleMute,
     toggleVideo,
     toggleScreenShare,
+    toggleHandRaise,
   };
 }
