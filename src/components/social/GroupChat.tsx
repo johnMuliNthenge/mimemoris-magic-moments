@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useGroupChat } from '@/hooks/useGroupChat';
 import { AddMembersDialog } from './AddMembersDialog';
+import { GroupCallWindow } from './GroupCallWindow';
 import { MediaPlayer } from './MediaPlayer';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
