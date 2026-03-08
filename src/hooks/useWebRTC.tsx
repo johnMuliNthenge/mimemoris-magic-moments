@@ -733,17 +733,20 @@ export function useWebRTC() {
     });
 
     incomingChannel.on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
-      if (!payload?.from) return;
+      const callerId = payload?.from as string | undefined;
+      const incomingType = payload?.callType as CallType | undefined;
+
+      if (!callerId || callerId === user.id || (incomingType !== 'audio' && incomingType !== 'video')) return;
 
       setCallState((prev) => {
         if (prev.status !== 'idle') return prev;
 
-        void beginCallHistory(payload.from, 'incoming', payload.callType);
+        void beginCallHistory(callerId, 'incoming', incomingType);
 
         return {
           status: 'ringing',
-          type: payload.callType,
-          remoteUserId: payload.from,
+          type: incomingType,
+          remoteUserId: callerId,
           remoteUserName: payload.callerName,
           remoteUserAvatar: payload.callerAvatar,
           isIncoming: true,
