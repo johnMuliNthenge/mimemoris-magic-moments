@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Link, QrCode, LogOut, Image, Play } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Users, Link, QrCode, LogOut, Image, Play, Phone, Video as VideoIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
