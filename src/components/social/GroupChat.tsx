@@ -513,6 +513,22 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
         </div>
       </div>
 
+      {/* Active call banner */}
+      {activeCall && !showCallWindow && (
+        <div className="px-4 py-2 bg-green-600/10 border-b border-green-600/20 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <Phone className="w-4 h-4 text-green-600 animate-pulse" />
+            <span className="font-medium text-green-700 dark:text-green-400">
+              {activeCall.call_type === 'video' ? 'Video' : 'Audio'} call in progress
+            </span>
+          </div>
+          <Button size="sm" variant="outline" className="gap-1 border-green-600 text-green-700 dark:text-green-400 hover:bg-green-600/10" onClick={() => setShowCallWindow(true)}>
+            <Phone className="w-3 h-3" />
+            Join
+          </Button>
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
