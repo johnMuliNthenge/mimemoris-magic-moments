@@ -240,6 +240,7 @@ export default function AdminDashboard() {
 }
 
 function RecentActivityFeed() {
+  const { t } = useTranslation();
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
