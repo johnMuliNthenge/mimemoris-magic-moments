@@ -180,6 +180,26 @@ export function useWhatup() {
     if (!error) {
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p));
 
+      // Get commenter name for notifications
+      const { data: commenterProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const commenterName = commenterProfile?.full_name || 'Someone';
+
+      // Notify post owner about the comment
+      const post = posts.find(p => p.id === postId);
+      if (post && post.user_id !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: post.user_id,
+          from_user_id: user.id,
+          type: 'trending_comment',
+          content: `${commenterName} commented on your Trending video`,
+          reference_id: postId,
+        });
+      }
+
       // Parse @mentions and create notifications
       const mentions = content.match(/@(\S+)/g);
       if (mentions) {
@@ -191,13 +211,13 @@ export function useWhatup() {
 
         if (mentionedUsers) {
           const notifications = mentionedUsers
-            .filter(u => u.user_id !== user.id)
+            .filter(u => u.user_id !== user.id && u.user_id !== post?.user_id)
             .map(u => ({
               user_id: u.user_id,
               from_user_id: user.id,
               type: 'trending_mention',
               reference_id: postId,
-              content: `tagged you in a Trending comment`,
+              content: `${commenterName} tagged you in a Trending comment`,
             }));
 
           if (notifications.length > 0) {
