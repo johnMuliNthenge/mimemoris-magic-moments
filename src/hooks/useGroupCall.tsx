@@ -49,6 +49,8 @@ export function useGroupCall(groupId: string) {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [handRaised, setHandRaised] = useState(false);
+  const [raisedHands, setRaisedHands] = useState<Set<string>>(new Set());
 
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
@@ -350,6 +352,15 @@ export function useGroupCall(groupId: string) {
             removePeer(payload.userId);
           }
         })
+        .on('broadcast', { event: 'hand-raise' }, ({ payload }) => {
+          if (payload.userId === user!.id) return;
+          setRaisedHands(prev => {
+            const next = new Set(prev);
+            if (payload.raised) next.add(payload.userId);
+            else next.delete(payload.userId);
+            return next;
+          });
+        })
         .on('broadcast', { event: 'renegotiate-offer' }, async ({ payload }) => {
           if (payload.to !== user!.id) return;
           console.log(`[GroupCall] Received renegotiate offer from ${payload.from}`);
@@ -645,6 +656,16 @@ export function useGroupCall(groupId: string) {
     }
   };
 
+  const toggleHandRaise = () => {
+    const newRaised = !handRaised;
+    setHandRaised(newRaised);
+    signalingChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'hand-raise',
+      payload: { userId: user!.id, raised: newRaised },
+    });
+  };
+
   return {
     status,
     activeCall,
@@ -655,6 +676,8 @@ export function useGroupCall(groupId: string) {
     isMuted,
     isVideoOff,
     isScreenSharing,
+    handRaised,
+    raisedHands,
     startCall,
     joinCall,
     leaveCall,
@@ -662,5 +685,6 @@ export function useGroupCall(groupId: string) {
     toggleMute,
     toggleVideo,
     toggleScreenShare,
+    toggleHandRaise,
   };
 }
