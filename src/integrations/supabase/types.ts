@@ -1014,6 +1014,44 @@ export type Database = {
         }
         Relationships: []
       }
+      reported_content: {
+        Row: {
+          created_at: string
+          id: string
+          memory_id: string
+          reason: string | null
+          reporter_id: string
+          reviewed_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memory_id: string
+          reason?: string | null
+          reporter_id: string
+          reviewed_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memory_id?: string
+          reason?: string | null
+          reporter_id?: string
+          reviewed_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reported_content_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_import_config: {
         Row: {
           config: Json | null
