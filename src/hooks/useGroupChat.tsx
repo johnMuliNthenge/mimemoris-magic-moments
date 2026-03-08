@@ -105,14 +105,16 @@ export function useGroupChat(groupId?: string) {
       return;
     }
 
+    const signedMessages = await signMediaFields(data as GroupMessage[], ['media_url']);
+
     // Fetch sender profiles
-    const senderIds = [...new Set(data.map(m => m.sender_id))];
+    const senderIds = [...new Set(signedMessages.map(m => m.sender_id))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, full_name, avatar_url')
       .in('user_id', senderIds);
 
-    const messagesWithProfiles = data.map(msg => ({
+    const messagesWithProfiles = signedMessages.map(msg => ({
       ...msg,
       sender_profile: profiles?.find(p => p.user_id === msg.sender_id)
     })) as GroupMessage[];
