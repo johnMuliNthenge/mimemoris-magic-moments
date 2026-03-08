@@ -636,7 +636,7 @@ export function useWebRTC() {
             stream.getTracks().forEach((track) => {
               const alreadySending = peerConnection.current
                 ?.getSenders()
-                .some((sender) => sender.track?.id === track.id);
+                .some((sender) => sender.track === track);
 
               if (!alreadySending) {
                 peerConnection.current?.addTrack(track, stream);
