@@ -9,7 +9,8 @@ import {
   TrendingUp,
   DollarSign,
   Activity,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -214,46 +215,113 @@ export default function AdminDashboard() {
           </Tabs>
         </motion.div>
 
-        {/* Activity Feed */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card className="border-border shadow-soft">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
-                Recent Activity
-              </CardTitle>
-              <CardDescription>Latest actions across the platform</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { action: 'New user registered', user: 'john@example.com', time: '2 minutes ago', type: 'user' },
-                  { action: 'Subscription upgraded to Premium', user: 'sarah@example.com', time: '15 minutes ago', type: 'subscription' },
-                  { action: 'Memory created', user: 'mike@example.com', time: '1 hour ago', type: 'memory' },
-                  { action: 'Collaboration started', user: 'anna@example.com', time: '2 hours ago', type: 'collab' },
-                ].map((activity, index) => (
-                  <div key={index} className="flex items-center gap-4 p-3 rounded-lg hover:bg-secondary/50 transition-colors">
-                    <div className={`w-2 h-2 rounded-full ${
-                      activity.type === 'user' ? 'bg-primary' :
-                      activity.type === 'subscription' ? 'bg-collab' :
-                      activity.type === 'memory' ? 'bg-accent' : 'bg-success'
-                    }`} />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{activity.action}</p>
-                      <p className="text-xs text-muted-foreground">{activity.user}</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{activity.time}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <RecentActivityFeed />
       </div>
     </AdminLayout>
+  );
+}
+
+function RecentActivityFeed() {
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRecentActivity();
+  }, []);
+
+  const fetchRecentActivity = async () => {
+    try {
+      // Fetch recent memories
+      const { data: recentMemories } = await supabase
+        .from('memories')
+        .select('id, user_id, memory_type, created_at, title')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Fetch recent subscriptions  
+      const { data: recentSubs } = await supabase
+        .from('user_subscriptions')
+        .select('id, user_id, created_at, plan:subscription_plans(name)')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Fetch recent collaborations
+      const { data: recentCollabs } = await supabase
+        .from('collaboration_sessions')
+        .select('id, host_user_id, created_at, title')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      const items: any[] = [];
+
+      recentMemories?.forEach(m => items.push({
+        action: `Memory created: ${m.title || m.memory_type}`,
+        time: m.created_at,
+        type: 'memory',
+      }));
+
+      recentSubs?.forEach(s => items.push({
+        action: `Subscription: ${(s.plan as any)?.name || 'Plan'}`,
+        time: s.created_at,
+        type: 'subscription',
+      }));
+
+      recentCollabs?.forEach(c => items.push({
+        action: `Collaboration: ${c.title || 'Session'}`,
+        time: c.created_at,
+        type: 'collab',
+      }));
+
+      items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      setActivities(items.slice(0, 8));
+    } catch (error) {
+      console.error('Error fetching activity:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5 }}
+    >
+      <Card className="border-border shadow-soft">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Recent Activity
+          </CardTitle>
+          <CardDescription>Latest actions across the platform</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : activities.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6">No recent activity</p>
+          ) : (
+            <div className="space-y-4">
+              {activities.map((activity, index) => (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg hover:bg-secondary/50 transition-colors">
+                  <div className={`w-2 h-2 rounded-full ${
+                    activity.type === 'memory' ? 'bg-accent' :
+                    activity.type === 'subscription' ? 'bg-collab' : 'bg-success'
+                  }`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.action}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(activity.time), 'MMM d, HH:mm')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

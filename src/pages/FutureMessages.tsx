@@ -42,6 +42,7 @@ export default function FutureMessages() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -71,6 +72,22 @@ export default function FutureMessages() {
     setLoading(false);
   };
 
+  const startEdit = (msg: FutureMessage) => {
+    setEditingId(msg.id);
+    setTitle(msg.title || '');
+    setContent(msg.content);
+    setDeliverAt(msg.deliver_at.slice(0, 16));
+    setShowForm(true);
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setContent('');
+    setDeliverAt('');
+    setEditingId(null);
+    setShowForm(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() || !deliverAt) return;
@@ -82,22 +99,36 @@ export default function FutureMessages() {
     }
 
     setSaving(true);
-    const { error } = await supabase.from('future_messages').insert({
-      user_id: user!.id,
-      title: title.trim() || null,
-      content: content.trim(),
-      deliver_at: deliverDate.toISOString(),
-    });
 
-    if (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    if (editingId) {
+      const { error } = await supabase.from('future_messages').update({
+        title: title.trim() || null,
+        content: content.trim(),
+        deliver_at: deliverDate.toISOString(),
+      }).eq('id', editingId);
+
+      if (error) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+      } else {
+        toast({ title: 'Message updated!' });
+        resetForm();
+        fetchMessages();
+      }
     } else {
-      toast({ title: t('future_msg_saved') });
-      setTitle('');
-      setContent('');
-      setDeliverAt('');
-      setShowForm(false);
-      fetchMessages();
+      const { error } = await supabase.from('future_messages').insert({
+        user_id: user!.id,
+        title: title.trim() || null,
+        content: content.trim(),
+        deliver_at: deliverDate.toISOString(),
+      });
+
+      if (error) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+      } else {
+        toast({ title: t('future_msg_saved') });
+        resetForm();
+        fetchMessages();
+      }
     }
     setSaving(false);
   };
@@ -124,7 +155,7 @@ export default function FutureMessages() {
             <p className="text-muted-foreground mt-1">{t('future_msg_subtitle')}</p>
           </div>
           <Button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => { resetForm(); setShowForm(!showForm); }}
             className="gradient-warm text-primary-foreground gap-2"
           >
             <Plus className="w-5 h-5" />
@@ -181,12 +212,12 @@ export default function FutureMessages() {
                       />
                     </div>
                     <div className="flex gap-3 pt-2">
-                      <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1">
+                      <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                         {t('cancel')}
                       </Button>
                       <Button type="submit" className="flex-1 gradient-warm text-primary-foreground" disabled={saving}>
                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {t('future_msg_send')}
+                        {editingId ? t('save') : t('future_msg_send')}
                       </Button>
                     </div>
                   </form>
@@ -242,9 +273,14 @@ export default function FutureMessages() {
                                 </div>
                               </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => startEdit(msg)}>
+                                <Clock className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDelete(msg.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
