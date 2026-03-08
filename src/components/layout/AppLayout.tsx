@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { useFriends } from '@/hooks/useFriends';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { cn } from '@/lib/utils';
 import { FloatingHelpButton } from '@/components/layout/FloatingHelpButton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
