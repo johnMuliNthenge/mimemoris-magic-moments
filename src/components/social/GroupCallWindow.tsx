@@ -267,6 +267,7 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
                 stream={p.stream}
                 label={p.full_name || 'User'}
                 avatarUrl={p.avatar_url}
+                connectionState={p.connectionState}
               />
             ))}
           </div>
