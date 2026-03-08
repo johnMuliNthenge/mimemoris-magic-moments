@@ -24,6 +24,7 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { cn } from '@/lib/utils';
 import { FloatingHelpButton } from '@/components/layout/FloatingHelpButton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 interface AppLayoutProps {
   children: ReactNode;
