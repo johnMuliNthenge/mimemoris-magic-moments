@@ -17,6 +17,10 @@ interface Memory {
   mood: string | null;
   created_at: string;
   locked_until?: string | null;
+  emotion_category?: string | null;
+  event_category?: string | null;
+  people_tags?: string[] | null;
+  sentiment_score?: number | null;
 }
 
 export default function MemoriesListPage() {
@@ -38,7 +42,7 @@ export default function MemoriesListPage() {
   const fetchMemories = async () => {
     const { data, error } = await supabase
       .from('memories')
-      .select('*')
+      .select('id, memory_type, memory_date, title, content, media_url, mood, created_at, locked_until, emotion_category, event_category, people_tags, sentiment_score')
       .eq('user_id', user?.id)
       .order('memory_date', { ascending: false });
 
@@ -50,7 +54,6 @@ export default function MemoriesListPage() {
   };
 
   const handleMemoryClick = (memory: Memory) => {
-    // No edit page yet - just log for now
     console.log('Memory clicked:', memory.id);
   };
 
