@@ -113,7 +113,7 @@ export default function SocialPage() {
             <PublicFeed />
           </TabsContent>
 
-          <TabsContent value="whatup">
+          <TabsContent value="trending">
             <WhatupFeed />
           </TabsContent>
 
