@@ -112,7 +112,7 @@ export default function Dashboard() {
 
   const stats = [
     { 
-      label: 'Total Memories', 
+      label: t('stat_total_memories'), 
       value: memories.length, 
       icon: BookHeart, 
       color: 'text-primary',
@@ -121,7 +121,7 @@ export default function Dashboard() {
       clickable: true
     },
     { 
-      label: 'Today', 
+      label: t('stat_today'), 
       value: subscription?.memories_used_today || 0, 
       icon: Calendar, 
       color: 'text-accent',
@@ -130,7 +130,7 @@ export default function Dashboard() {
       clickable: true
     },
     { 
-      label: 'Collaborations', 
+      label: t('stat_collaborations'), 
       value: collaborationsCount, 
       icon: Users, 
       color: 'text-collab',
@@ -139,8 +139,8 @@ export default function Dashboard() {
       clickable: true
     },
     { 
-      label: 'Memory Streak', 
-      value: `${calculateStreak()} days`, 
+      label: t('stat_streak'), 
+      value: t('stat_days', { count: calculateStreak() }), 
       icon: TrendingUp, 
       color: 'text-success',
       bgColor: 'bg-success/10',
