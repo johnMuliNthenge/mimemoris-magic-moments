@@ -349,7 +349,6 @@ export type Database = {
           host_user_id: string
           id: string
           is_active: boolean | null
-          otp_code: string
           otp_expires_at: string
           session_date: string | null
           title: string | null
@@ -360,7 +359,6 @@ export type Database = {
           host_user_id: string
           id?: string
           is_active?: boolean | null
-          otp_code: string
           otp_expires_at: string
           session_date?: string | null
           title?: string | null
@@ -371,7 +369,6 @@ export type Database = {
           host_user_id?: string
           id?: string
           is_active?: boolean | null
-          otp_code?: string
           otp_expires_at?: string
           session_date?: string | null
           title?: string | null
@@ -1343,6 +1340,10 @@ export type Database = {
       join_collaboration_with_otp: {
         Args: { _collaboration_id: string; _otp_code: string }
         Returns: boolean
+      }
+      join_group_by_invite_code: {
+        Args: { _invite_code: string }
+        Returns: Json
       }
       reset_daily_memory_count: {
         Args: { _subscription_id: string }

@@ -158,7 +158,6 @@ export default function CollaboratePage() {
         .from('collaboration_sessions')
         .insert({
           host_user_id: user.id,
-          otp_code: otp,
           otp_expires_at: expiresAt,
           title: `Collaboration ${new Date().toLocaleDateString()}`,
         })
@@ -166,6 +165,12 @@ export default function CollaboratePage() {
         .single();
 
       if (error) throw error;
+
+      // Store OTP in separate secure table
+      await supabase.from('collaboration_otp').insert({
+        collaboration_id: session.id,
+        otp_code: otp,
+      });
 
       // Add host as participant
       await supabase.from('collaboration_participants').insert({
