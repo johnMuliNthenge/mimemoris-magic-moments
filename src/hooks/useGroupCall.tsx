@@ -527,6 +527,11 @@ export function useGroupCall(groupId: string) {
     localStreamRef.current = null;
     setLocalStream(null);
 
+    screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    screenSendersRef.current.clear();
+
     if (signalingChannelRef.current) {
       supabase.removeChannel(signalingChannelRef.current);
       signalingChannelRef.current = null;
