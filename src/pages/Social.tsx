@@ -113,6 +113,10 @@ export default function SocialPage() {
             <PublicFeed />
           </TabsContent>
 
+          <TabsContent value="whatup">
+            <WhatupFeed />
+          </TabsContent>
+
           <TabsContent value="friends">
             <FriendsList onStartChat={handleStartChat} />
           </TabsContent>
