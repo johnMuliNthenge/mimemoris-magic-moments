@@ -42,9 +42,27 @@ export default function SettingsPage() {
   const { preferences: notifPrefs, updatePreference: updateNotifPref, loading: notifLoading } = useNotificationPreferences();
 
   const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState(i18n.language);
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
   const [loading, setLoading] = useState(false);
+
+  // Load profile data on mount
+  useState(() => {
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setFullName(data.full_name || '');
+            setAvatarUrl(data.avatar_url);
+          }
+        });
+    }
+  });
 
   const handleLanguageChange = (lang: string) => {
     setSelectedLanguage(lang);
