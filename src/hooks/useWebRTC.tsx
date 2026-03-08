@@ -763,51 +763,81 @@ export function useWebRTC() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const incomingChannel = supabase.channel(`incoming-calls-${user.id}`, {
-      config: { broadcast: { self: false } },
-    });
+    let isMounted = true;
+    let incomingChannel: ReturnType<typeof supabase.channel> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    incomingChannel.on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
-      const callerId = payload?.from as string | undefined;
-      const incomingType = payload?.callType as CallType | undefined;
+    const connectIncomingChannel = () => {
+      if (!isMounted || !user?.id) return;
 
-      if (!callerId || callerId === user.id || (incomingType !== 'audio' && incomingType !== 'video')) return;
-
-      setCallState((prev) => {
-        if (prev.status !== 'idle') return prev;
-
-        void beginCallHistory(callerId, 'incoming', incomingType);
-
-        return {
-          status: 'ringing',
-          type: incomingType,
-          remoteUserId: callerId,
-          remoteUserName: payload.callerName,
-          remoteUserAvatar: payload.callerAvatar,
-          isIncoming: true,
-          duration: 0,
-        };
+      incomingChannel = supabase.channel(`incoming-calls-${user.id}`, {
+        config: { broadcast: { self: false } },
       });
-    });
 
-    incomingChannel.on('broadcast', { event: 'cancel-call' }, ({ payload }) => {
-      const current = callStateRef.current;
-      if (
-        current.status === 'ringing' &&
-        current.isIncoming &&
-        current.remoteUserId &&
-        payload?.from === current.remoteUserId
-      ) {
-        cleanup('missed');
-      }
-    });
+      incomingChannel.on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
+        const callerId = payload?.from as string | undefined;
+        const incomingType = payload?.callType as CallType | undefined;
 
-    incomingChannel.subscribe((status) => {
-      console.log('[WebRTC] Incoming channel status:', status);
-    });
+        if (!callerId || callerId === user.id || (incomingType !== 'audio' && incomingType !== 'video')) return;
+
+        setCallState((prev) => {
+          if (prev.status !== 'idle') return prev;
+
+          void beginCallHistory(callerId, 'incoming', incomingType);
+
+          return {
+            status: 'ringing',
+            type: incomingType,
+            remoteUserId: callerId,
+            remoteUserName: payload.callerName,
+            remoteUserAvatar: payload.callerAvatar,
+            isIncoming: true,
+            duration: 0,
+          };
+        });
+      });
+
+      incomingChannel.on('broadcast', { event: 'cancel-call' }, ({ payload }) => {
+        const current = callStateRef.current;
+        if (
+          current.status === 'ringing' &&
+          current.isIncoming &&
+          current.remoteUserId &&
+          payload?.from === current.remoteUserId
+        ) {
+          cleanup('missed');
+        }
+      });
+
+      incomingChannel.subscribe((status) => {
+        console.log('[WebRTC] Incoming channel status:', status);
+
+        if (!isMounted || !incomingChannel) return;
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          supabase.removeChannel(incomingChannel);
+          incomingChannel = null;
+
+          if (retryTimer) clearTimeout(retryTimer);
+          retryTimer = setTimeout(() => {
+            connectIncomingChannel();
+          }, 1500);
+        }
+      });
+    };
+
+    connectIncomingChannel();
 
     return () => {
-      supabase.removeChannel(incomingChannel);
+      isMounted = false;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (incomingChannel) {
+        supabase.removeChannel(incomingChannel);
+        incomingChannel = null;
+      }
     };
   }, [user?.id, beginCallHistory, cleanup]);
 
