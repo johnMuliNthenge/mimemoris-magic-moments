@@ -47,6 +47,11 @@ export function useGroupCall(groupId: string) {
   const [isHost, setIsHost] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
 
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -446,6 +451,74 @@ export function useGroupCall(groupId: string) {
     }
   };
 
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      // Stop screen sharing — revert to camera
+      stopScreenShare();
+      return;
+    }
+
+    try {
+      const screen = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always' } as any,
+        audio: false
+      });
+
+      screenStreamRef.current = screen;
+      setScreenStream(screen);
+      setIsScreenSharing(true);
+
+      const screenTrack = screen.getVideoTracks()[0];
+
+      // When user stops sharing via browser UI
+      screenTrack.onended = () => {
+        stopScreenShare();
+      };
+
+      // Replace the video track in every peer connection with the screen track
+      peersRef.current.forEach((pc, peerId) => {
+        const videoSender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(screenTrack);
+          screenSendersRef.current.set(peerId, videoSender);
+        }
+      });
+
+      // Broadcast to peers that screen sharing started
+      signalingChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'screen-share',
+        payload: { userId: user!.id, sharing: true }
+      });
+    } catch (err) {
+      // User cancelled the screen picker
+      console.log('Screen share cancelled or failed:', err);
+    }
+  };
+
+  const stopScreenShare = () => {
+    // Stop screen tracks
+    screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    setIsScreenSharing(false);
+
+    // Revert to camera track in all peer connections
+    const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (cameraTrack) {
+      screenSendersRef.current.forEach((sender) => {
+        sender.replaceTrack(cameraTrack);
+      });
+    }
+    screenSendersRef.current.clear();
+
+    signalingChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'screen-share',
+      payload: { userId: user!.id, sharing: false }
+    });
+  };
+
   const cleanup = (resetStatus = true) => {
     peersRef.current.forEach(pc => pc.close());
     peersRef.current.clear();
@@ -454,6 +527,11 @@ export function useGroupCall(groupId: string) {
     localStreamRef.current = null;
     setLocalStream(null);
 
+    screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    screenSendersRef.current.clear();
+
     if (signalingChannelRef.current) {
       supabase.removeChannel(signalingChannelRef.current);
       signalingChannelRef.current = null;
@@ -461,8 +539,8 @@ export function useGroupCall(groupId: string) {
 
     setParticipants(new Map());
     setIsHost(false);
-    setIsMuted(false);
     setIsVideoOff(false);
+    setIsScreenSharing(false);
     if (resetStatus) {
       setStatus('idle');
       setActiveCall(null);
@@ -474,14 +552,17 @@ export function useGroupCall(groupId: string) {
     activeCall,
     participants,
     localStream,
+    screenStream,
     isHost,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     startCall,
     joinCall,
     leaveCall,
     kickParticipant,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
   };
 }

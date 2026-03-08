@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, UserMinus, X, Users, Wifi, WifiOff } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, UserMinus, X, Users, Wifi, WifiOff, Monitor, MonitorOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -94,15 +94,18 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
     activeCall,
     participants,
     localStream,
+    screenStream,
     isHost,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     startCall,
     joinCall,
     leaveCall,
     kickParticipant,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
   } = callHook;
 
   const [showParticipants, setShowParticipants] = useState(false);
@@ -252,6 +255,17 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
             participantList.length <= 8 ? "grid-cols-2 sm:grid-cols-3" :
             "grid-cols-3 sm:grid-cols-4"
           )}>
+            {/* Screen share tile (shown prominently when active) */}
+            {isScreenSharing && screenStream && (
+              <div className="col-span-full">
+                <VideoTile
+                  stream={screenStream}
+                  label="Your Screen"
+                  isLocal
+                />
+              </div>
+            )}
+
             {/* Local user tile */}
             <VideoTile
               stream={localStream}
@@ -341,6 +355,16 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
             {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
           </Button>
         )}
+
+        <Button
+          variant={isScreenSharing ? 'default' : 'secondary'}
+          size="icon"
+          className={cn("rounded-full w-12 h-12", isScreenSharing && "bg-primary text-primary-foreground")}
+          onClick={toggleScreenShare}
+          title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+        >
+          {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+        </Button>
 
         <Button
           variant="destructive"
