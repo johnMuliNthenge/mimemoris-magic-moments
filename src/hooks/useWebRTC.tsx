@@ -604,6 +604,10 @@ export function useWebRTC() {
             answer: peerConnection.current.localDescription,
             from: user.id,
           });
+
+          setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
+          markCallConnected();
+          startDurationTimer();
           console.log('[WebRTC] Answer sent');
         } catch (error) {
           console.error('[WebRTC] Error handling offer:', error);
