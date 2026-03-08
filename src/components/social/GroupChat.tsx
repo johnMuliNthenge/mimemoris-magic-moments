@@ -641,6 +641,15 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           </Button>
         </div>
       </div>
+
+      {/* Group Call Window */}
+      {showCallWindow && (
+        <GroupCallWindow
+          groupId={groupId}
+          groupName={currentGroup.name}
+          onClose={() => setShowCallWindow(false)}
+        />
+      )}
     </div>
   );
 }
