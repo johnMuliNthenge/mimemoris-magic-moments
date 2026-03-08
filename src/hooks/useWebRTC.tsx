@@ -43,7 +43,7 @@ const ICE_SERVERS: RTCIceServer[] = [
 ];
 
 const CHANNEL_SUBSCRIBE_TIMEOUT_MS = 10000;
-const DISCONNECT_GRACE_MS = 120000; // 2 minutes grace for network blips — no call duration limit
+// No disconnect grace timeout — calls stay alive indefinitely until manually ended
 
 export function useWebRTC() {
   const { user } = useAuth();
