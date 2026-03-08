@@ -187,6 +187,17 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const { user } = useAuth();
   const { messages, sendMessage, editMessage, deleteMessage, canEditMessage, loading } = useChat(selectedUserId || undefined);
+  const {
+    callState,
+    localStream,
+    remoteStream,
+    initiateCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMute,
+    toggleVideo,
+  } = useWebRTC();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<any>(null);
