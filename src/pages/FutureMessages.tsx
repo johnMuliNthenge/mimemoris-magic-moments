@@ -155,7 +155,7 @@ export default function FutureMessages() {
             <p className="text-muted-foreground mt-1">{t('future_msg_subtitle')}</p>
           </div>
           <Button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => { resetForm(); setShowForm(!showForm); }}
             className="gradient-warm text-primary-foreground gap-2"
           >
             <Plus className="w-5 h-5" />
