@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { signMediaFields, signSingleMediaUrl } from '@/lib/storage-utils';
 
 interface GroupMessage {
   id: string;
