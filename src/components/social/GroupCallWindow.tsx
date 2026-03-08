@@ -13,6 +13,7 @@ interface GroupCallWindowProps {
   groupId: string;
   groupName: string;
   onClose: () => void;
+  callHook: ReturnType<typeof useGroupCall>;
 }
 
 function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
