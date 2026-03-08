@@ -969,6 +969,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_active_social_platforms: {
+        Args: never
+        Returns: {
+          contact_identifier: string
+          display_name: string
+          is_active: boolean
+          platform: string
+        }[]
+      }
       get_group_by_invite_code: {
         Args: { code: string }
         Returns: {
