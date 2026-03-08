@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Users, MessageCircle, Globe, UsersRound } from 'lucide-react';
+import { Users, MessageCircle, Globe, UsersRound, Video } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FriendsList } from '@/components/social/FriendsList';
