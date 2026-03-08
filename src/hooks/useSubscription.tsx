@@ -79,14 +79,8 @@ export function useSubscription() {
       const lastDate = data.last_memory_date;
       
       if (lastDate !== today) {
-        // Reset daily count for new day
-        await supabase
-          .from('user_subscriptions')
-          .update({ 
-            memories_used_today: 0, 
-            last_memory_date: today 
-          })
-          .eq('id', data.id);
+        // Reset daily count for new day using secure RPC
+        await supabase.rpc('reset_daily_memory_count', { _subscription_id: data.id });
         
         data.memories_used_today = 0;
         data.last_memory_date = today;

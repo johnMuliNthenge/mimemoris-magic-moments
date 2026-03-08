@@ -196,15 +196,14 @@ export default function CollaboratePage() {
     setLoading(true);
 
     try {
-      // Find active session with matching OTP
-      const { data: session, error: findError } = await supabase
-        .from('collaboration_sessions')
-        .select('*')
-        .eq('otp_code', otpCode)
-        .eq('is_active', true)
-        .gt('otp_expires_at', new Date().toISOString())
-        .maybeSingle();
+      // Find session by OTP using secure RPC (doesn't expose OTP in response)
+      const { data: sessions, error: findError } = await supabase.rpc('find_collaboration_by_otp', {
+        _otp_code: otpCode,
+      });
 
+      if (findError) throw findError;
+
+      const session = sessions?.[0];
       if (!session) {
         toast({
           variant: 'destructive',
@@ -215,20 +214,13 @@ export default function CollaboratePage() {
         return;
       }
 
-      // Check if already a participant
-      const { data: existing } = await supabase
-        .from('collaboration_participants')
-        .select('*')
-        .eq('collaboration_id', session.id)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Join using secure RPC that validates OTP server-side
+      const { error: joinError } = await supabase.rpc('join_collaboration_with_otp', {
+        _collaboration_id: session.id,
+        _otp_code: otpCode,
+      });
 
-      if (!existing) {
-        await supabase.from('collaboration_participants').insert({
-          collaboration_id: session.id,
-          user_id: user.id,
-        });
-      }
+      if (joinError) throw joinError;
 
       setActiveSession(session);
       setShowJoinDialog(false);
