@@ -360,8 +360,19 @@ export default function SubscriptionPage() {
                       {plan.name}
                     </CardTitle>
                     <div className={cn("mt-4", isPremium && "text-collab-foreground")}>
-                      <span className="text-4xl font-bold">${plan.price_monthly}</span>
-                      <span className="text-muted-foreground">{t('per_month')}</span>
+                      {appliedCoupon ? (
+                        <div>
+                          <span className="text-lg line-through text-muted-foreground">${plan.price_monthly}</span>
+                          <span className="text-4xl font-bold ml-2">${getDiscountedPrice(plan.price_monthly)}</span>
+                          <span className="text-muted-foreground">{t('per_month')}</span>
+                          <Badge variant="secondary" className="ml-2 text-xs">-{appliedCoupon.discount_percentage}%</Badge>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-4xl font-bold">${plan.price_monthly}</span>
+                          <span className="text-muted-foreground">{t('per_month')}</span>
+                        </>
+                      )}
                     </div>
                     <CardDescription className={cn(isPremium && "text-collab-foreground/80")}>
                       {plan.daily_memory_limit} memories per day
