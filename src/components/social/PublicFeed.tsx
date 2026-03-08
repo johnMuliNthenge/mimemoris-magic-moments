@@ -405,7 +405,7 @@ export function PublicFeed() {
       <Dialog open={!!selectedMemory} onOpenChange={() => setSelectedMemory(null)}>
         <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Comments</DialogTitle>
+            <DialogTitle>{t('comments')}</DialogTitle>
           </DialogHeader>
           
           <ScrollArea className="flex-1 pr-4">
