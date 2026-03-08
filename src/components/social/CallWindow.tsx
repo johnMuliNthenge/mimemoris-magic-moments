@@ -110,14 +110,26 @@ export function CallWindow({
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (localVideoRef.current && localStream.current && localVideoRef.current.srcObject !== localStream.current) {
-        localVideoRef.current.srcObject = localStream.current;
+      // Attach local stream to local video (PIP)
+      if (localVideoRef.current && localStream.current) {
+        if (localVideoRef.current.srcObject !== localStream.current) {
+          localVideoRef.current.srcObject = localStream.current;
+        }
       }
 
-      if (remoteVideoRef.current && remoteStream.current && remoteVideoRef.current.srcObject !== remoteStream.current) {
-        remoteVideoRef.current.srcObject = remoteStream.current;
+      // Attach remote stream to remote video (main view)
+      if (remoteVideoRef.current && remoteStream.current) {
+        if (remoteVideoRef.current.srcObject !== remoteStream.current) {
+          console.log('[CallWindow] Attaching remote stream, tracks:', remoteStream.current.getTracks().length);
+          remoteVideoRef.current.srcObject = remoteStream.current;
+        }
+        // If remote stream has tracks but video isn't playing, try to play
+        if (remoteStream.current.getTracks().length > 0 && remoteVideoRef.current.paused) {
+          remoteVideoRef.current.play().catch(() => {});
+        }
       }
 
+      // Audio-only: attach remote stream to audio element
       if (
         remoteAudioRef.current &&
         type === 'audio' &&
@@ -127,7 +139,7 @@ export function CallWindow({
       ) {
         remoteAudioRef.current.srcObject = remoteStream.current;
       }
-    }, 250);
+    }, 200);
 
     return () => clearInterval(interval);
   }, [localStream, remoteStream, status, type]);
