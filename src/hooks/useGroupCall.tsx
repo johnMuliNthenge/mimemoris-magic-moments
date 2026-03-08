@@ -59,6 +59,11 @@ export function useGroupCall(groupId: string) {
   const activeCallRef = useRef<ActiveGroupCall | null>(null);
   const statusRef = useRef<GroupCallStatus>('idle');
 
+  // ICE candidate buffer: store candidates that arrive before remote description is set
+  const iceCandidateBufferRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  // Track which peers have had their remote description set
+  const remoteDescSetRef = useRef<Set<string>>(new Set());
+
   // Keep refs in sync
   useEffect(() => { activeCallRef.current = activeCall; }, [activeCall]);
   useEffect(() => { statusRef.current = status; }, [status]);
@@ -109,7 +114,6 @@ export function useGroupCall(groupId: string) {
           const call = payload.new as ActiveGroupCall;
           if (call.status === 'active') {
             setActiveCall(call);
-            // Alert other members with sound if they're not the one who started it
             if (call.started_by !== user?.id && statusRef.current === 'idle') {
               playIncomingCallSound();
             }
@@ -123,7 +127,6 @@ export function useGroupCall(groupId: string) {
             if (activeCallRef.current?.id === call.id && statusRef.current === 'connected') {
               cleanup(true);
               setStatus('ended');
-              // Reset to idle after a moment
               setTimeout(() => setStatus('idle'), 2000);
             }
           }
@@ -144,10 +147,58 @@ export function useGroupCall(groupId: string) {
     return stream;
   };
 
+  /** Flush any buffered ICE candidates for a peer after remote description is set */
+  const flushIceCandidates = async (peerId: string, pc: RTCPeerConnection) => {
+    remoteDescSetRef.current.add(peerId);
+    const buffered = iceCandidateBufferRef.current.get(peerId);
+    if (buffered && buffered.length > 0) {
+      console.log(`[GroupCall] Flushing ${buffered.length} buffered ICE candidates for ${peerId}`);
+      for (const candidate of buffered) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.warn('[GroupCall] Failed to add buffered ICE candidate:', e);
+        }
+      }
+      iceCandidateBufferRef.current.delete(peerId);
+    }
+  };
+
+  /** Add an ICE candidate — either apply immediately or buffer it */
+  const handleIceCandidate = async (fromId: string, candidate: RTCIceCandidateInit) => {
+    const pc = peersRef.current.get(fromId);
+    if (!pc) {
+      // No peer connection yet — buffer it
+      if (!iceCandidateBufferRef.current.has(fromId)) {
+        iceCandidateBufferRef.current.set(fromId, []);
+      }
+      iceCandidateBufferRef.current.get(fromId)!.push(candidate);
+      return;
+    }
+
+    if (!remoteDescSetRef.current.has(fromId)) {
+      // Remote description not set yet — buffer it
+      if (!iceCandidateBufferRef.current.has(fromId)) {
+        iceCandidateBufferRef.current.set(fromId, []);
+      }
+      iceCandidateBufferRef.current.get(fromId)!.push(candidate);
+      return;
+    }
+
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (e) {
+      console.warn('[GroupCall] Failed to add ICE candidate:', e);
+    }
+  };
+
   const createPeerConnection = (remoteUserId: string, stream: MediaStream): RTCPeerConnection => {
     // Close existing connection if any
     const existing = peersRef.current.get(remoteUserId);
     if (existing) { existing.close(); }
+
+    // Reset state for this peer
+    remoteDescSetRef.current.delete(remoteUserId);
 
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
@@ -190,7 +241,7 @@ export function useGroupCall(groupId: string) {
 
     pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
-      // Map ICE states to simpler connection states
+      console.log(`[GroupCall] ICE state for ${remoteUserId}: ${state}`);
       const mapped: Participant['connectionState'] =
         state === 'connected' || state === 'completed' ? 'connected' :
         state === 'checking' || state === 'new' ? 'connecting' :
@@ -205,9 +256,22 @@ export function useGroupCall(groupId: string) {
         return next;
       });
 
-      if (state === 'disconnected' || state === 'failed') {
+      if (state === 'failed') {
+        console.log(`[GroupCall] ICE failed for ${remoteUserId}, restarting ICE`);
         pc.restartIce();
+      } else if (state === 'disconnected') {
+        // Wait a moment before restarting — transient disconnects are common on mobile
+        setTimeout(() => {
+          if (pc.iceConnectionState === 'disconnected') {
+            console.log(`[GroupCall] Still disconnected for ${remoteUserId}, restarting ICE`);
+            pc.restartIce();
+          }
+        }, 3000);
       }
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log(`[GroupCall] Connection state for ${remoteUserId}: ${pc.connectionState}`);
     };
 
     peersRef.current.set(remoteUserId, pc);
@@ -223,30 +287,46 @@ export function useGroupCall(groupId: string) {
       channel
         .on('broadcast', { event: 'offer' }, async ({ payload }) => {
           if (payload.to !== user!.id) return;
+          console.log(`[GroupCall] Received offer from ${payload.from}`);
           const pc = peersRef.current.get(payload.from) || createPeerConnection(payload.from, localStreamRef.current!);
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          channel.send({
-            type: 'broadcast',
-            event: 'answer',
-            payload: { from: user!.id, to: payload.from, sdp: answer }
-          });
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            // Flush any buffered ICE candidates now that remote desc is set
+            await flushIceCandidates(payload.from, pc);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            channel.send({
+              type: 'broadcast',
+              event: 'answer',
+              payload: { from: user!.id, to: payload.from, sdp: answer }
+            });
+            console.log(`[GroupCall] Sent answer to ${payload.from}`);
+          } catch (e) {
+            console.error('[GroupCall] Error handling offer:', e);
+          }
         })
         .on('broadcast', { event: 'answer' }, async ({ payload }) => {
           if (payload.to !== user!.id) return;
+          console.log(`[GroupCall] Received answer from ${payload.from}`);
           const pc = peersRef.current.get(payload.from);
-          if (pc) await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          if (pc) {
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+              // Flush any buffered ICE candidates now that remote desc is set
+              await flushIceCandidates(payload.from, pc);
+            } catch (e) {
+              console.error('[GroupCall] Error handling answer:', e);
+            }
+          }
         })
         .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
           if (payload.to !== user!.id) return;
-          const pc = peersRef.current.get(payload.from);
-          if (pc) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch { }
-          }
+          // Use the buffering handler instead of directly adding
+          await handleIceCandidate(payload.from, payload.candidate);
         })
         .on('broadcast', { event: 'user-joined' }, async ({ payload }) => {
           if (payload.userId === user!.id) return;
+          console.log(`[GroupCall] User joined: ${payload.userId}`);
           await addParticipantEntry(payload.userId, payload.name, payload.avatar);
           const pc = createPeerConnection(payload.userId, localStreamRef.current!);
           const offer = await pc.createOffer();
@@ -256,6 +336,7 @@ export function useGroupCall(groupId: string) {
             event: 'offer',
             payload: { from: user!.id, to: payload.userId, sdp: offer }
           });
+          console.log(`[GroupCall] Sent offer to ${payload.userId}`);
         })
         .on('broadcast', { event: 'user-left' }, ({ payload }) => {
           removePeer(payload.userId);
@@ -269,8 +350,29 @@ export function useGroupCall(groupId: string) {
             removePeer(payload.userId);
           }
         })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
+        .on('broadcast', { event: 'renegotiate-offer' }, async ({ payload }) => {
+          if (payload.to !== user!.id) return;
+          console.log(`[GroupCall] Received renegotiate offer from ${payload.from}`);
+          const pc = peersRef.current.get(payload.from);
+          if (pc) {
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+              await flushIceCandidates(payload.from, pc);
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              channel.send({
+                type: 'broadcast',
+                event: 'answer',
+                payload: { from: user!.id, to: payload.from, sdp: answer }
+              });
+            } catch (e) {
+              console.error('[GroupCall] Error handling renegotiate:', e);
+            }
+          }
+        })
+        .subscribe((st) => {
+          if (st === 'SUBSCRIBED') {
+            console.log(`[GroupCall] Signaling channel subscribed for call ${callId}`);
             signalingChannelRef.current = channel;
             resolve();
           }
@@ -297,6 +399,8 @@ export function useGroupCall(groupId: string) {
   const removePeer = (userId: string) => {
     const pc = peersRef.current.get(userId);
     if (pc) { pc.close(); peersRef.current.delete(userId); }
+    remoteDescSetRef.current.delete(userId);
+    iceCandidateBufferRef.current.delete(userId);
     setParticipants(prev => {
       const next = new Map(prev);
       next.delete(userId);
@@ -311,7 +415,6 @@ export function useGroupCall(groupId: string) {
     try {
       const stream = await getMedia(callType);
 
-      // Create the call record — this triggers realtime for all group members
       const { data: callData, error } = await supabase
         .from('group_calls')
         .insert({ group_id: groupId, started_by: user.id, call_type: callType })
@@ -324,13 +427,10 @@ export function useGroupCall(groupId: string) {
       setActiveCall(call);
       setIsHost(true);
 
-      // Add self as participant
       await supabase.from('group_call_participants').insert({ call_id: call.id, user_id: user.id });
 
-      // Setup signaling and WAIT for channel to be subscribed
       await setupSignaling(call.id);
 
-      // Now safe to announce
       signalingChannelRef.current?.send({
         type: 'broadcast',
         event: 'user-joined',
@@ -353,7 +453,6 @@ export function useGroupCall(groupId: string) {
       const stream = await getMedia(activeCall.call_type as 'audio' | 'video');
       setIsHost(activeCall.started_by === user.id);
 
-      // Add self as participant in DB
       await supabase.from('group_call_participants')
         .upsert({ call_id: activeCall.id, user_id: user.id, left_at: null, was_kicked: false }, { onConflict: 'call_id,user_id' });
 
@@ -364,7 +463,7 @@ export function useGroupCall(groupId: string) {
         .eq('call_id', activeCall.id)
         .is('left_at', null);
 
-      // Setup signaling and WAIT for channel to be subscribed
+      // Setup signaling FIRST and wait for subscription
       await setupSignaling(activeCall.id);
 
       // Add participant entries for existing members
@@ -379,7 +478,10 @@ export function useGroupCall(groupId: string) {
       // Fetch own profile for broadcast
       const { data: myProfile } = await supabase.from('profiles').select('full_name, avatar_url').eq('user_id', user.id).single();
 
-      // Now safe to announce — existing members will send offers
+      // Small delay to ensure signaling is fully ready before announcing
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Announce — existing members will send offers
       signalingChannelRef.current!.send({
         type: 'broadcast',
         event: 'user-joined',
@@ -398,7 +500,6 @@ export function useGroupCall(groupId: string) {
     if (!user || !activeCall) return;
 
     if (isHost) {
-      // Host ends the entire call
       await supabase.from('group_calls').update({ status: 'ended', ended_at: new Date().toISOString() }).eq('id', activeCall.id);
       signalingChannelRef.current?.send({
         type: 'broadcast',
@@ -453,7 +554,6 @@ export function useGroupCall(groupId: string) {
 
   const toggleScreenShare = async () => {
     if (isScreenSharing) {
-      // Stop screen sharing — revert to camera
       stopScreenShare();
       return;
     }
@@ -470,12 +570,10 @@ export function useGroupCall(groupId: string) {
 
       const screenTrack = screen.getVideoTracks()[0];
 
-      // When user stops sharing via browser UI
       screenTrack.onended = () => {
         stopScreenShare();
       };
 
-      // Replace the video track in every peer connection with the screen track
       peersRef.current.forEach((pc, peerId) => {
         const videoSender = pc.getSenders().find(s => s.track?.kind === 'video');
         if (videoSender) {
@@ -484,26 +582,22 @@ export function useGroupCall(groupId: string) {
         }
       });
 
-      // Broadcast to peers that screen sharing started
       signalingChannelRef.current?.send({
         type: 'broadcast',
         event: 'screen-share',
         payload: { userId: user!.id, sharing: true }
       });
     } catch (err) {
-      // User cancelled the screen picker
       console.log('Screen share cancelled or failed:', err);
     }
   };
 
   const stopScreenShare = () => {
-    // Stop screen tracks
     screenStreamRef.current?.getTracks().forEach(t => t.stop());
     screenStreamRef.current = null;
     setScreenStream(null);
     setIsScreenSharing(false);
 
-    // Revert to camera track in all peer connections
     const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
     if (cameraTrack) {
       screenSendersRef.current.forEach((sender) => {
@@ -531,6 +625,10 @@ export function useGroupCall(groupId: string) {
     screenStreamRef.current = null;
     setScreenStream(null);
     screenSendersRef.current.clear();
+
+    // Clear ICE candidate buffers
+    iceCandidateBufferRef.current.clear();
+    remoteDescSetRef.current.clear();
 
     if (signalingChannelRef.current) {
       supabase.removeChannel(signalingChannelRef.current);
