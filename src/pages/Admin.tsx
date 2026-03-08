@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { subDays, format } from 'date-fns';
-import { subDays, format } from 'date-fns';
 import { 
   Users, 
   BookHeart, 
@@ -10,7 +9,8 @@ import {
   TrendingUp,
   DollarSign,
   Activity,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
