@@ -113,7 +113,7 @@ export function WhatupFeed() {
 
       if (error) throw error;
 
-      toast({ title: 'Posted!', description: 'Your Whatup video is live' });
+      toast({ title: 'Posted!', description: 'Your Trending video is live' });
       clearVideo();
       refetch();
     } catch (err: any) {
