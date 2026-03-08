@@ -677,6 +677,7 @@ const resources = {
 
       ...analyticsKeys.fr,
       ...timelockKeys.fr,
+      ...notificationKeys.fr,
     }
   },
   es: {
