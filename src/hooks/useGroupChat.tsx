@@ -56,6 +56,23 @@ export function useGroupChat(groupId?: string) {
   useEffect(() => {
     if (user) {
       fetchGroups();
+      
+      // Subscribe to membership changes so user sees groups they're added to
+      const memberChannel = supabase
+        .channel('my-group-memberships')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'chat_group_members',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          fetchGroups();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(memberChannel);
+      };
     }
   }, [user]);
 

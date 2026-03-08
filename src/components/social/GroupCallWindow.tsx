@@ -60,7 +60,11 @@ function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
   );
 }
 
-export function GroupCallWindow({ groupId, groupName, onClose }: GroupCallWindowProps) {
+interface GroupCallWindowInternalProps extends GroupCallWindowProps {
+  callHook: ReturnType<typeof useGroupCall>;
+}
+
+export function GroupCallWindow({ groupId, groupName, onClose, callHook }: GroupCallWindowInternalProps) {
   const { user } = useAuth();
   const {
     status,
@@ -76,7 +80,7 @@ export function GroupCallWindow({ groupId, groupName, onClose }: GroupCallWindow
     kickParticipant,
     toggleMute,
     toggleVideo,
-  } = useGroupCall(groupId);
+  } = callHook;
 
   const [showParticipants, setShowParticipants] = useState(false);
   const [elapsed, setElapsed] = useState(0);
