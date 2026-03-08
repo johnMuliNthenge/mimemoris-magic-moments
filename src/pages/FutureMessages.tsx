@@ -212,7 +212,7 @@ export default function FutureMessages() {
                       />
                     </div>
                     <div className="flex gap-3 pt-2">
-                      <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1">
+                      <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
                         {t('cancel')}
                       </Button>
                       <Button type="submit" className="flex-1 gradient-warm text-primary-foreground" disabled={saving}>
