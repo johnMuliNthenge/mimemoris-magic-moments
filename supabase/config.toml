@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.telegram-import-webhook]
 verify_jwt = false
+
+[functions.deliver-future-messages]
+verify_jwt = false
