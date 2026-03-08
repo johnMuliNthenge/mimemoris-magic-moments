@@ -695,7 +695,6 @@ export function useWebRTC() {
 
       await sendSignal(channel, 'ready-for-offer', { from: user.id });
       setCallState((prev) => ({ ...prev, status: 'calling', isIncoming: false }));
-      void pc;
     } catch (error) {
       console.error('[WebRTC] Failed to accept call:', error);
       cleanup('failed');
