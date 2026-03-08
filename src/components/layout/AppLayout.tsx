@@ -158,6 +158,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Mobile: theme + logout in header */}
           <div className="flex md:hidden items-center gap-1">
+            <NotificationBell />
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl h-9 w-9">
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
