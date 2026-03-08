@@ -377,7 +377,7 @@ export default function Dashboard() {
                       className="h-auto p-0"
                       onClick={() => navigate('/collaborations')}
                     >
-                      View all →
+                      {t('view_all')}
                     </Button>
                   </div>
                   {collaborationsCount > 0 ? (
