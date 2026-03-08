@@ -47,6 +47,7 @@ export function CallWindow({
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const remoteDisplayStreamRef = useRef<MediaStream>(new MediaStream());
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
