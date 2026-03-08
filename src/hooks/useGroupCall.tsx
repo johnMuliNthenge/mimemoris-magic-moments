@@ -552,14 +552,17 @@ export function useGroupCall(groupId: string) {
     activeCall,
     participants,
     localStream,
+    screenStream,
     isHost,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     startCall,
     joinCall,
     leaveCall,
     kickParticipant,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
   };
 }
