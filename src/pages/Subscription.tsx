@@ -165,6 +165,16 @@ export default function SubscriptionPage() {
             setMpesaPolling(false);
             setShowMpesaDialog(false);
             setMpesaPhone('');
+            // Redeem coupon if applied
+            if (appliedCoupon && selectedPlan) {
+              await supabase.rpc('redeem_coupon', {
+                _coupon_id: appliedCoupon.coupon_id,
+                _plan_id: selectedPlan.id,
+                _original_price: selectedPlan.price_monthly,
+                _payment_method: 'mpesa',
+              });
+              removeCoupon();
+            }
             toast({ title: '🎉 Payment Successful!', description: 'Your subscription has been activated.' });
             refetchSubscription();
             checkSubscription();
