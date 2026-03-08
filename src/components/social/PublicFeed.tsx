@@ -192,11 +192,26 @@ export function PublicFeed() {
     await toggleLike(memoryId);
   };
 
-  const handleReport = (memory: any) => {
-    toast({
-      title: 'Report submitted',
-      description: 'Thank you for reporting. Our team will review this content.',
-    });
+  const handleReport = async (memory: any) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('reported_content').insert({
+        reporter_id: user.id,
+        memory_id: memory.id,
+        reason: 'inappropriate',
+      });
+      if (error && error.code === '23505') {
+        toast({ title: t('report_submitted'), description: 'You have already reported this content.' });
+        return;
+      }
+      if (error) throw error;
+      toast({
+        title: t('report_submitted'),
+        description: t('report_submitted_desc'),
+      });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
   };
 
   if (loading) {
