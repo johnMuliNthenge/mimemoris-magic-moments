@@ -395,7 +395,7 @@ export function PublicFeed() {
           <div className="flex justify-center pt-4">
             <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="gap-2">
               {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
-              Load more
+              {t('load_more')}
             </Button>
           </div>
         )}
