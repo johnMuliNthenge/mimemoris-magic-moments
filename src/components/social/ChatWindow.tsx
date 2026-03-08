@@ -251,28 +251,9 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
     }
   };
 
-  const callWindow = (
-    <CallWindow
-      status={callState.status}
-      type={callState.type}
-      remoteUserName={callState.remoteUserName || selectedUserName}
-      remoteUserAvatar={callState.remoteUserAvatar || selectedUserAvatar}
-      isIncoming={callState.isIncoming}
-      duration={callState.duration}
-      localStream={localStream}
-      remoteStream={remoteStream}
-      onAccept={acceptCall}
-      onReject={rejectCall}
-      onEnd={endCall}
-      onToggleMute={toggleMute}
-      onToggleVideo={toggleVideo}
-    />
-  );
-
   if (!selectedUserId) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
-        {callWindow}
         <p>Select a conversation to start chatting</p>
       </div>
     );
@@ -280,7 +261,6 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
 
   return (
     <div className="flex flex-col h-full">
-      {callWindow}
 
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border">
