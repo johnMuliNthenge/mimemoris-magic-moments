@@ -367,6 +367,16 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
         )}
 
         <Button
+          variant={handRaised ? 'default' : 'secondary'}
+          size="icon"
+          className={cn("rounded-full w-11 h-11 sm:w-12 sm:h-12", handRaised && "bg-warning text-warning-foreground")}
+          onClick={toggleHandRaise}
+          title={handRaised ? 'Lower hand' : 'Raise hand'}
+        >
+          <Hand className="w-5 h-5" />
+        </Button>
+
+        <Button
           variant="destructive"
           size="icon"
           className="rounded-full w-12 h-12 sm:w-14 sm:h-14"
