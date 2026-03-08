@@ -47,6 +47,11 @@ export function useGroupCall(groupId: string) {
   const [isHost, setIsHost] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
 
   const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
