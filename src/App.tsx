@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { WebRTCProvider } from "@/hooks/useGlobalWebRTC";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import "@fontsource/nunito/400.css";
 import "@fontsource/nunito/600.css";
@@ -38,6 +39,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <WebRTCProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -64,6 +66,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </WebRTCProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
