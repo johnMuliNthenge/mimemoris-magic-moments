@@ -314,7 +314,7 @@ export function WhatupFeed() {
                     </p>
                   </div>
                   <Badge variant="secondary" className="gap-1">
-                    <Video className="w-3 h-3" /> Whatup
+                    <Video className="w-3 h-3" /> Trending
                   </Badge>
                 </CardHeader>
 
