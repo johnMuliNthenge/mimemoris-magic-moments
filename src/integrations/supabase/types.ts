@@ -1275,6 +1275,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_memory_usage: {
+        Args: { _subscription_id: string }
+        Returns: undefined
+      }
       is_collaboration_host: {
         Args: { _collaboration_id: string; _user_id: string }
         Returns: boolean
@@ -1298,6 +1302,10 @@ export type Database = {
       join_collaboration_with_otp: {
         Args: { _collaboration_id: string; _otp_code: string }
         Returns: boolean
+      }
+      reset_daily_memory_count: {
+        Args: { _subscription_id: string }
+        Returns: undefined
       }
       search_users_for_discovery: {
         Args: { page_num?: number; page_size?: number; search_term?: string }
