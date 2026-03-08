@@ -245,7 +245,7 @@ export function WhatupFeed() {
                   >
                     <Upload className="w-6 h-6 text-muted-foreground" />
                     <div className="text-center">
-                      <p className="font-medium">Upload a Whatup Video</p>
+                      <p className="font-medium">Upload a Trending Video</p>
                       <p className="text-xs text-muted-foreground">Up to {MAX_VIDEO_DURATION} seconds</p>
                     </div>
                   </Button>
