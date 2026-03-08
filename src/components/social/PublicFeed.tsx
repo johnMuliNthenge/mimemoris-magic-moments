@@ -289,7 +289,7 @@ export function PublicFeed() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleReport(memory)} className="gap-2 text-destructive">
                             <Flag className="w-4 h-4" />
-                            Report
+                            {t('report')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
