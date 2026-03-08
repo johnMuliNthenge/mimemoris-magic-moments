@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { subscription } = useSubscription();
+  const { preferences: notifPrefs, updatePreference: updateNotifPref, loading: notifLoading } = useNotificationPreferences();
 
   const [fullName, setFullName] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState(i18n.language);
