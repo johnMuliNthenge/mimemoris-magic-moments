@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  PhoneOff,
-  Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  PhoneIncoming,
-} from 'lucide-react';
+import { PhoneOff, Video, VideoOff, Mic, MicOff, PhoneIncoming } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -112,18 +105,10 @@ export function CallWindow({
             <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
           )}
 
-          {/* Video call - show video streams */}
           {type === 'video' && status === 'connected' && (
             <>
-              {/* Remote video (full) */}
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
 
-              {/* Local video (pip) */}
               <motion.div
                 drag
                 dragConstraints={{ left: -200, right: 200, top: -150, bottom: 150 }}
@@ -141,10 +126,8 @@ export function CallWindow({
             </>
           )}
 
-          {/* Audio call or waiting states */}
           {(type === 'audio' || status !== 'connected') && (
             <div className="flex flex-col items-center justify-center py-12 gap-6">
-              {/* Pulsing avatar */}
               <div className="relative">
                 {(status === 'calling' || status === 'ringing') && (
                   <>
@@ -169,9 +152,7 @@ export function CallWindow({
               </div>
 
               <div className="text-center">
-                <h3 className="text-xl font-semibold text-foreground">
-                  {remoteUserName || 'Unknown User'}
-                </h3>
+                <h3 className="text-xl font-semibold text-foreground">{remoteUserName || 'Unknown User'}</h3>
                 <p className="text-muted-foreground mt-1">
                   {status === 'calling' && 'Calling...'}
                   {status === 'ringing' && isIncoming && 'Incoming call...'}
@@ -179,14 +160,11 @@ export function CallWindow({
                   {status === 'connected' && formatDuration(duration)}
                   {status === 'ended' && 'Call ended'}
                 </p>
-                <p className="text-xs text-muted-foreground/70 mt-0.5 capitalize">
-                  {type} call
-                </p>
+                <p className="text-xs text-muted-foreground/70 mt-0.5 capitalize">{type} call</p>
               </div>
             </div>
           )}
 
-          {/* Connected video call overlay info */}
           {type === 'video' && status === 'connected' && (
             <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5">
               <p className="text-white text-sm font-medium">{remoteUserName}</p>
@@ -194,40 +172,38 @@ export function CallWindow({
             </div>
           )}
 
-          {/* Controls */}
           <div
             className={cn(
-              'flex items-center justify-center gap-4 py-6',
+              'flex items-center justify-center gap-3 py-6 flex-wrap',
               type === 'video' && status === 'connected' &&
                 'absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent pt-12'
             )}
           >
-            {/* Incoming call - Accept/Reject */}
             {status === 'ringing' && isIncoming && (
               <>
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
                   <Button
                     size="lg"
-                    variant="destructive"
-                    className="rounded-full w-14 h-14"
+                    className="rounded-full h-12 px-5 bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     onClick={onReject}
                   >
-                    <PhoneOff className="w-6 h-6" />
+                    <PhoneOff className="w-5 h-5 mr-2" />
+                    Decline
                   </Button>
                 </motion.div>
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
                   <Button
                     size="lg"
-                    className="rounded-full w-14 h-14 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="rounded-full h-12 px-5 bg-success text-success-foreground hover:bg-success/90"
                     onClick={onAccept}
                   >
-                    <PhoneIncoming className="w-6 h-6" />
+                    <PhoneIncoming className="w-5 h-5 mr-2" />
+                    Accept
                   </Button>
                 </motion.div>
               </>
             )}
 
-            {/* Active call or outgoing call controls */}
             {(status === 'connected' || status === 'calling') && (
               <>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
@@ -267,7 +243,6 @@ export function CallWindow({
               </>
             )}
 
-            {/* Ringing outgoing - cancel */}
             {status === 'ringing' && !isIncoming && (
               <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                 <Button

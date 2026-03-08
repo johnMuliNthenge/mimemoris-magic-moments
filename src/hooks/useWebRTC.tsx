@@ -5,6 +5,9 @@ import { useAuth } from '@/hooks/useAuth';
 export type CallStatus = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
 export type CallType = 'audio' | 'video';
 
+type CallHistoryStatus = 'ringing' | 'connected' | 'completed' | 'missed' | 'rejected' | 'failed' | 'canceled';
+type CallDirection = 'incoming' | 'outgoing';
+
 interface CallState {
   status: CallStatus;
   type: CallType;
@@ -15,19 +18,32 @@ interface CallState {
   duration: number;
 }
 
+interface ActiveCallLog {
+  id: string | null;
+  peerUserId: string;
+  direction: CallDirection;
+  callType: CallType;
+  connectedAt: number | null;
+  finalized: boolean;
+}
+
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:openrelay.metered.ca:80' },
   {
-    urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp'],
+    urls: [
+      'turn:openrelay.metered.ca:80',
+      'turn:openrelay.metered.ca:443',
+      'turn:openrelay.metered.ca:443?transport=tcp',
+    ],
     username: 'openrelayproject',
     credential: 'openrelayproject',
   },
 ];
 
 const CHANNEL_SUBSCRIBE_TIMEOUT_MS = 10000;
-const DISCONNECT_GRACE_MS = 12000;
+const DISCONNECT_GRACE_MS = 15000;
 
 export function useWebRTC() {
   const { user } = useAuth();
@@ -39,6 +55,7 @@ export function useWebRTC() {
     duration: 0,
   });
 
+  const callStateRef = useRef(callState);
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStream = useRef<MediaStream | null>(null);
   const remoteStream = useRef<MediaStream | null>(null);
@@ -46,6 +63,11 @@ export function useWebRTC() {
   const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingCandidates = useRef<RTCIceCandidateInit[]>([]);
   const disconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeCallLog = useRef<ActiveCallLog | null>(null);
+
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
 
   const resetCallState = useCallback(() => {
     setCallState({
@@ -55,60 +77,6 @@ export function useWebRTC() {
       isIncoming: false,
       duration: 0,
     });
-  }, []);
-
-  const cleanup = useCallback(() => {
-    if (durationInterval.current) {
-      clearInterval(durationInterval.current);
-      durationInterval.current = null;
-    }
-
-    if (disconnectTimeout.current) {
-      clearTimeout(disconnectTimeout.current);
-      disconnectTimeout.current = null;
-    }
-
-    if (localStream.current) {
-      localStream.current.getTracks().forEach((track) => track.stop());
-      localStream.current = null;
-    }
-
-    if (peerConnection.current) {
-      peerConnection.current.close();
-      peerConnection.current = null;
-    }
-
-    if (signalingChannel.current) {
-      supabase.removeChannel(signalingChannel.current);
-      signalingChannel.current = null;
-    }
-
-    remoteStream.current = null;
-    pendingCandidates.current = [];
-    resetCallState();
-  }, [resetCallState]);
-
-  const startDurationTimer = useCallback(() => {
-    if (durationInterval.current) clearInterval(durationInterval.current);
-
-    durationInterval.current = setInterval(() => {
-      setCallState((prev) => ({ ...prev, duration: prev.duration + 1 }));
-    }, 1000);
-  }, []);
-
-  const getMedia = useCallback(async (callType: CallType) => {
-    const constraints: MediaStreamConstraints = {
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-      video: callType === 'video' ? { width: 640, height: 480, facingMode: 'user' } : false,
-    };
-
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    localStream.current = stream;
-    return stream;
   }, []);
 
   const waitForChannelSubscription = useCallback(
@@ -144,6 +112,202 @@ export function useWebRTC() {
     []
   );
 
+  const sendSignal = useCallback(
+    async (
+      channel: ReturnType<typeof supabase.channel> | null,
+      event: string,
+      payload: Record<string, unknown>
+    ) => {
+      if (!channel) return;
+
+      const message = {
+        type: 'broadcast' as const,
+        event,
+        payload,
+      };
+
+      const channelWithHttpSend = channel as ReturnType<typeof supabase.channel> & {
+        httpSend?: (payload: typeof message) => Promise<unknown>;
+      };
+
+      if (typeof channelWithHttpSend.httpSend === 'function') {
+        await channelWithHttpSend.httpSend(message);
+        return;
+      }
+
+      await channel.send(message);
+    },
+    []
+  );
+
+  const updateHistoryById = useCallback(
+    async (historyId: string, updates: Record<string, unknown>) => {
+      if (!user?.id) return;
+
+      const { error } = await supabase
+        .from('call_history' as any)
+        .update(updates)
+        .eq('id', historyId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('[WebRTC] Failed updating call history:', error);
+      }
+    },
+    [user?.id]
+  );
+
+  const beginCallHistory = useCallback(
+    async (peerUserId: string, direction: CallDirection, callType: CallType) => {
+      if (!user?.id) return;
+
+      const localLog: ActiveCallLog = {
+        id: null,
+        peerUserId,
+        direction,
+        callType,
+        connectedAt: null,
+        finalized: false,
+      };
+
+      activeCallLog.current = localLog;
+
+      const { data, error } = await supabase
+        .from('call_history' as any)
+        .insert({
+          user_id: user.id,
+          peer_user_id: peerUserId,
+          direction,
+          call_type: callType,
+          status: 'ringing',
+          started_at: new Date().toISOString(),
+          duration_seconds: 0,
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('[WebRTC] Failed creating call history:', error);
+        return;
+      }
+
+      if (activeCallLog.current === localLog) {
+        activeCallLog.current = { ...localLog, id: data?.id ?? null };
+      }
+    },
+    [user?.id]
+  );
+
+  const markCallConnected = useCallback(() => {
+    const currentLog = activeCallLog.current;
+    if (!currentLog || currentLog.finalized) return;
+
+    currentLog.connectedAt = Date.now();
+
+    if (currentLog.id) {
+      void updateHistoryById(currentLog.id, { status: 'connected' });
+    }
+  }, [updateHistoryById]);
+
+  const finalizeCallHistory = useCallback(
+    (status: CallHistoryStatus) => {
+      const currentLog = activeCallLog.current;
+      if (!currentLog || currentLog.finalized) return;
+
+      currentLog.finalized = true;
+
+      if (!currentLog.id) return;
+
+      const durationSeconds = currentLog.connectedAt
+        ? Math.max(0, Math.round((Date.now() - currentLog.connectedAt) / 1000))
+        : 0;
+
+      void updateHistoryById(currentLog.id, {
+        status,
+        ended_at: new Date().toISOString(),
+        duration_seconds: durationSeconds,
+      });
+    },
+    [updateHistoryById]
+  );
+
+  const cleanupResources = useCallback(() => {
+    if (durationInterval.current) {
+      clearInterval(durationInterval.current);
+      durationInterval.current = null;
+    }
+
+    if (disconnectTimeout.current) {
+      clearTimeout(disconnectTimeout.current);
+      disconnectTimeout.current = null;
+    }
+
+    if (localStream.current) {
+      localStream.current.getTracks().forEach((track) => track.stop());
+      localStream.current = null;
+    }
+
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+
+    if (signalingChannel.current) {
+      supabase.removeChannel(signalingChannel.current);
+      signalingChannel.current = null;
+    }
+
+    pendingCandidates.current = [];
+    remoteStream.current = null;
+    activeCallLog.current = null;
+    resetCallState();
+  }, [resetCallState]);
+
+  const cleanup = useCallback(
+    (finalStatus?: CallHistoryStatus) => {
+      if (finalStatus) {
+        finalizeCallHistory(finalStatus);
+      }
+      cleanupResources();
+    },
+    [cleanupResources, finalizeCallHistory]
+  );
+
+  const startDurationTimer = useCallback(() => {
+    if (durationInterval.current) clearInterval(durationInterval.current);
+
+    durationInterval.current = setInterval(() => {
+      setCallState((prev) => ({ ...prev, duration: prev.duration + 1 }));
+    }, 1000);
+  }, []);
+
+  const getMedia = useCallback(async (callType: CallType) => {
+    const constraints: MediaStreamConstraints = {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: callType === 'video' ? { width: 640, height: 480, facingMode: 'user' } : false,
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    localStream.current = stream;
+    return stream;
+  }, []);
+
+  const getChannelName = useCallback(
+    (remoteUserId: string) => `call-${[user?.id, remoteUserId].sort().join('-')}`,
+    [user?.id]
+  );
+
+  const getRemoteEndedStatus = useCallback((): CallHistoryStatus => {
+    const current = callStateRef.current;
+    if (current.status === 'connected') return 'completed';
+    if (current.isIncoming && current.status === 'ringing') return 'missed';
+    return 'canceled';
+  }, []);
+
   const createPeerConnection = useCallback(
     (onConnected: () => void) => {
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
@@ -151,22 +315,23 @@ export function useWebRTC() {
 
       pc.ontrack = (event) => {
         event.streams[0]?.getTracks().forEach((track) => {
-          remoteStream.current?.addTrack(track);
+          const alreadyAdded = remoteStream.current
+            ?.getTracks()
+            .some((existingTrack) => existingTrack.id === track.id);
+
+          if (!alreadyAdded) {
+            remoteStream.current?.addTrack(track);
+          }
         });
       };
 
-      pc.onicecandidate = async (event) => {
+      pc.onicecandidate = (event) => {
         if (!event.candidate || !signalingChannel.current || !user?.id) return;
 
-        try {
-          await signalingChannel.current.send({
-            type: 'broadcast',
-            event: 'ice-candidate',
-            payload: { candidate: event.candidate.toJSON(), from: user.id },
-          });
-        } catch (error) {
-          console.error('[WebRTC] Failed to send ICE candidate:', error);
-        }
+        void sendSignal(signalingChannel.current, 'ice-candidate', {
+          candidate: event.candidate.toJSON(),
+          from: user.id,
+        });
       };
 
       pc.onconnectionstatechange = () => {
@@ -183,22 +348,22 @@ export function useWebRTC() {
 
         if (pc.connectionState === 'disconnected') {
           if (disconnectTimeout.current) clearTimeout(disconnectTimeout.current);
+
           disconnectTimeout.current = setTimeout(() => {
-            if (!peerConnection.current || peerConnection.current !== pc) return;
-            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-              cleanup();
-            }
+            if (peerConnection.current !== pc) return;
+            cleanup('failed');
           }, DISCONNECT_GRACE_MS);
           return;
         }
 
-        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-          cleanup();
+        if (pc.connectionState === 'failed') {
+          cleanup('failed');
         }
       };
 
       pc.oniceconnectionstatechange = async () => {
         console.log('[WebRTC] ICE state:', pc.iceConnectionState);
+
         if (pc.iceConnectionState === 'failed') {
           try {
             await pc.restartIce();
@@ -211,18 +376,33 @@ export function useWebRTC() {
       peerConnection.current = pc;
       return pc;
     },
-    [cleanup, user?.id]
+    [cleanup, sendSignal, user?.id]
   );
 
-  const getChannelName = useCallback(
-    (remoteUserId: string) => `call-${[user?.id, remoteUserId].sort().join('-')}`,
-    [user?.id]
+  const sendIncomingNotification = useCallback(
+    async (remoteUserId: string, event: string, payload: Record<string, unknown>) => {
+      const notifyChannel = supabase.channel(`incoming-calls-${remoteUserId}`, {
+        config: { broadcast: { self: false } },
+      });
+
+      try {
+        await waitForChannelSubscription(notifyChannel, 'Incoming notification channel');
+        await sendSignal(notifyChannel, event, payload);
+      } finally {
+        setTimeout(() => supabase.removeChannel(notifyChannel), 500);
+      }
+    },
+    [sendSignal, waitForChannelSubscription]
   );
 
   const initiateCall = useCallback(
     async (remoteUserId: string, callType: CallType, remoteUserName?: string, remoteUserAvatar?: string) => {
       if (!user?.id) return;
       console.log('[WebRTC] Initiating call to', remoteUserId, callType);
+
+      if (callStateRef.current.status !== 'idle') {
+        cleanup('failed');
+      }
 
       try {
         setCallState({
@@ -235,6 +415,9 @@ export function useWebRTC() {
           duration: 0,
         });
 
+        pendingCandidates.current = [];
+        await beginCallHistory(remoteUserId, 'outgoing', callType);
+
         const channelName = getChannelName(remoteUserId);
         const channel = supabase.channel(channelName, {
           config: { broadcast: { self: false } },
@@ -242,7 +425,6 @@ export function useWebRTC() {
 
         channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
           if (!peerConnection.current || !payload?.answer) return;
-          console.log('[WebRTC] Received answer');
 
           try {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.answer));
@@ -253,6 +435,27 @@ export function useWebRTC() {
             pendingCandidates.current = [];
           } catch (error) {
             console.error('[WebRTC] Error setting answer:', error);
+          }
+        });
+
+        channel.on('broadcast', { event: 'ready-for-offer' }, async () => {
+          const pc = peerConnection.current;
+          if (!pc || !user.id) return;
+
+          try {
+            if (!pc.localDescription) {
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+            }
+
+            await sendSignal(channel, 'offer', {
+              offer: pc.localDescription,
+              from: user.id,
+              callType,
+            });
+            console.log('[WebRTC] Offer sent');
+          } catch (error) {
+            console.error('[WebRTC] Failed to send offer:', error);
           }
         });
 
@@ -271,38 +474,11 @@ export function useWebRTC() {
         });
 
         channel.on('broadcast', { event: 'end-call' }, () => {
-          console.log('[WebRTC] Remote ended call');
-          cleanup();
+          cleanup(getRemoteEndedStatus());
         });
 
         channel.on('broadcast', { event: 'reject-call' }, () => {
-          console.log('[WebRTC] Call rejected');
-          cleanup();
-        });
-
-        channel.on('broadcast', { event: 'ready-for-offer' }, async () => {
-          const pc = peerConnection.current;
-          if (!pc || !user.id) return;
-
-          try {
-            if (!pc.localDescription) {
-              const localOffer = await pc.createOffer();
-              await pc.setLocalDescription(localOffer);
-            }
-
-            await channel.send({
-              type: 'broadcast',
-              event: 'offer',
-              payload: {
-                offer: pc.localDescription,
-                from: user.id,
-                callType,
-              },
-            });
-            console.log('[WebRTC] Callee ready, offer sent');
-          } catch (error) {
-            console.error('[WebRTC] Failed to send offer:', error);
-          }
+          cleanup('rejected');
         });
 
         await waitForChannelSubscription(channel, 'Caller signaling channel');
@@ -310,7 +486,8 @@ export function useWebRTC() {
 
         const stream = await getMedia(callType);
         const pc = createPeerConnection(() => {
-          setCallState((prev) => ({ ...prev, status: 'connected' }));
+          setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
+          markCallConnected();
           startDurationTimer();
         });
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -318,45 +495,54 @@ export function useWebRTC() {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
-        const notifyChannel = supabase.channel(`incoming-calls-${remoteUserId}`, {
-          config: { broadcast: { self: false } },
+        await sendIncomingNotification(remoteUserId, 'incoming-call', {
+          from: user.id,
+          callType,
+          callerName: user.user_metadata?.full_name || 'Unknown',
+          callerAvatar: user.user_metadata?.avatar_url || undefined,
         });
-
-        try {
-          await waitForChannelSubscription(notifyChannel, 'Incoming notification channel');
-          await notifyChannel.send({
-            type: 'broadcast',
-            event: 'incoming-call',
-            payload: {
-              from: user.id,
-              callType,
-              callerName: user.user_metadata?.full_name || 'Unknown',
-              callerAvatar: undefined,
-            },
-          });
-          console.log('[WebRTC] Incoming-call notification sent');
-        } finally {
-          setTimeout(() => supabase.removeChannel(notifyChannel), 750);
-        }
       } catch (error) {
         console.error('[WebRTC] Failed to initiate call:', error);
-        cleanup();
+        cleanup('failed');
       }
     },
-    [user, getChannelName, waitForChannelSubscription, getMedia, createPeerConnection, startDurationTimer, cleanup]
+    [
+      user,
+      cleanup,
+      beginCallHistory,
+      getChannelName,
+      sendSignal,
+      waitForChannelSubscription,
+      getMedia,
+      createPeerConnection,
+      markCallConnected,
+      startDurationTimer,
+      sendIncomingNotification,
+      getRemoteEndedStatus,
+    ]
   );
 
   const acceptCall = useCallback(async () => {
-    if (!callState.remoteUserId || !user?.id) return;
+    if (!callStateRef.current.remoteUserId || !user?.id) return;
 
-    const remoteUserId = callState.remoteUserId;
-    const callType = callState.type;
-    console.log('[WebRTC] Accepting call from', remoteUserId);
+    const remoteUserId = callStateRef.current.remoteUserId;
+    const callType = callStateRef.current.type;
 
     try {
+      if (
+        !activeCallLog.current ||
+        activeCallLog.current.direction !== 'incoming' ||
+        activeCallLog.current.peerUserId !== remoteUserId
+      ) {
+        await beginCallHistory(remoteUserId, 'incoming', callType);
+      }
+
+      pendingCandidates.current = [];
+
       const stream = await getMedia(callType);
       const pc = createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
+        markCallConnected();
         startDurationTimer();
       });
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -368,7 +554,6 @@ export function useWebRTC() {
 
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
         if (!peerConnection.current || !payload?.offer) return;
-        console.log('[WebRTC] Received offer SDP');
 
         try {
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
@@ -381,10 +566,9 @@ export function useWebRTC() {
           const answer = await peerConnection.current.createAnswer();
           await peerConnection.current.setLocalDescription(answer);
 
-          await channel.send({
-            type: 'broadcast',
-            event: 'answer',
-            payload: { answer: peerConnection.current.localDescription, from: user.id },
+          await sendSignal(channel, 'answer', {
+            answer: peerConnection.current.localDescription,
+            from: user.id,
           });
           console.log('[WebRTC] Answer sent');
         } catch (error) {
@@ -407,36 +591,41 @@ export function useWebRTC() {
       });
 
       channel.on('broadcast', { event: 'end-call' }, () => {
-        console.log('[WebRTC] Remote ended call');
-        cleanup();
+        cleanup(getRemoteEndedStatus());
       });
 
       channel.on('broadcast', { event: 'reject-call' }, () => {
-        console.log('[WebRTC] Call rejected by caller');
-        cleanup();
+        cleanup('rejected');
       });
 
       await waitForChannelSubscription(channel, 'Callee signaling channel');
       signalingChannel.current = channel;
 
-      await channel.send({
-        type: 'broadcast',
-        event: 'ready-for-offer',
-        payload: { from: user.id },
-      });
-
+      await sendSignal(channel, 'ready-for-offer', { from: user.id });
       setCallState((prev) => ({ ...prev, status: 'calling', isIncoming: false }));
-      console.log('[WebRTC] Ready-for-offer sent');
     } catch (error) {
       console.error('[WebRTC] Failed to accept call:', error);
-      cleanup();
+      cleanup('failed');
     }
-  }, [callState.remoteUserId, callState.type, user?.id, getMedia, createPeerConnection, getChannelName, waitForChannelSubscription, startDurationTimer, cleanup]);
+  }, [
+    user?.id,
+    beginCallHistory,
+    getMedia,
+    createPeerConnection,
+    markCallConnected,
+    startDurationTimer,
+    getChannelName,
+    sendSignal,
+    waitForChannelSubscription,
+    cleanup,
+    getRemoteEndedStatus,
+  ]);
 
   const rejectCall = useCallback(() => {
-    if (!callState.remoteUserId || !user?.id) return;
+    if (!callStateRef.current.remoteUserId || !user?.id) return;
 
-    const targetUserId = callState.remoteUserId;
+    const targetUserId = callStateRef.current.remoteUserId;
+
     const reject = async () => {
       const channelName = getChannelName(targetUserId);
       const rejectChannel = supabase.channel(channelName, {
@@ -445,11 +634,7 @@ export function useWebRTC() {
 
       try {
         await waitForChannelSubscription(rejectChannel, 'Reject channel');
-        await rejectChannel.send({
-          type: 'broadcast',
-          event: 'reject-call',
-          payload: { from: user.id },
-        });
+        await sendSignal(rejectChannel, 'reject-call', { from: user.id });
       } catch (error) {
         console.error('[WebRTC] Failed to send reject:', error);
       } finally {
@@ -458,22 +643,24 @@ export function useWebRTC() {
     };
 
     void reject();
-    cleanup();
-  }, [callState.remoteUserId, user?.id, getChannelName, waitForChannelSubscription, cleanup]);
+    cleanup('rejected');
+  }, [user?.id, getChannelName, waitForChannelSubscription, sendSignal, cleanup]);
 
   const endCall = useCallback(() => {
     const channel = signalingChannel.current;
+    const current = callStateRef.current;
+    const remoteUserId = current.remoteUserId;
 
     if (channel && user?.id) {
-      void channel.send({
-        type: 'broadcast',
-        event: 'end-call',
-        payload: { from: user.id },
-      });
+      void sendSignal(channel, 'end-call', { from: user.id });
     }
 
-    cleanup();
-  }, [user?.id, cleanup]);
+    if (current.status !== 'connected' && remoteUserId && user?.id) {
+      void sendIncomingNotification(remoteUserId, 'cancel-call', { from: user.id });
+    }
+
+    cleanup(current.status === 'connected' ? 'completed' : 'canceled');
+  }, [cleanup, sendSignal, sendIncomingNotification, user?.id]);
 
   const toggleMute = useCallback(() => {
     if (!localStream.current) return;
@@ -497,10 +684,12 @@ export function useWebRTC() {
     });
 
     incomingChannel.on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
-      console.log('[WebRTC] Incoming call from', payload.from, payload.callType);
+      if (!payload?.from) return;
 
       setCallState((prev) => {
         if (prev.status !== 'idle') return prev;
+
+        void beginCallHistory(payload.from, 'incoming', payload.callType);
 
         return {
           status: 'ringing',
@@ -514,6 +703,18 @@ export function useWebRTC() {
       });
     });
 
+    incomingChannel.on('broadcast', { event: 'cancel-call' }, ({ payload }) => {
+      const current = callStateRef.current;
+      if (
+        current.status === 'ringing' &&
+        current.isIncoming &&
+        current.remoteUserId &&
+        payload?.from === current.remoteUserId
+      ) {
+        cleanup('missed');
+      }
+    });
+
     incomingChannel.subscribe((status) => {
       console.log('[WebRTC] Incoming channel status:', status);
     });
@@ -521,11 +722,11 @@ export function useWebRTC() {
     return () => {
       supabase.removeChannel(incomingChannel);
     };
-  }, [user?.id]);
+  }, [user?.id, beginCallHistory, cleanup]);
 
   useEffect(() => {
-    return () => cleanup();
-  }, [cleanup]);
+    return () => cleanupResources();
+  }, [cleanupResources]);
 
   return {
     callState,
