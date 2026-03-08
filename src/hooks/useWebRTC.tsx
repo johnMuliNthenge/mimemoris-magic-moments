@@ -337,7 +337,7 @@ export function useWebRTC() {
           .filter((track): track is MediaStreamTrack => Boolean(track) && track.readyState === 'live')
           .filter((track) => !localTracks.some((localTrack) => localTrack === track));
 
-        if (incomingTracks.length === 0) return;
+        
 
         receiverRemoteStream.getTracks().forEach((track) => {
           if (!incomingTracks.some((incoming) => incoming.id === track.id)) {
