@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { User, Globe, Moon, Sun, Loader2, CreditCard, ChevronRight, Share2 } from 'lucide-react';
+import { User, Globe, Moon, Sun, Loader2, CreditCard, ChevronRight, Share2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
