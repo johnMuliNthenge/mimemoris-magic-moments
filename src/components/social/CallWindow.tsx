@@ -118,14 +118,21 @@ export function CallWindow({
       }
 
       // Attach remote stream to remote video (main view)
-      if (remoteVideoRef.current && remoteStream.current) {
-        if (remoteVideoRef.current.srcObject !== remoteStream.current) {
-          console.log('[CallWindow] Attaching remote stream, tracks:', remoteStream.current.getTracks().length);
-          remoteVideoRef.current.srcObject = remoteStream.current;
-        }
-        // If remote stream has tracks but video isn't playing, try to play
-        if (remoteStream.current.getTracks().length > 0 && remoteVideoRef.current.paused) {
-          remoteVideoRef.current.play().catch(() => {});
+      if (remoteVideoRef.current) {
+        const remote = remoteStream.current;
+
+        if (remote && remote.getTracks().length > 0) {
+          if (remoteVideoRef.current.srcObject !== remote) {
+            console.log('[CallWindow] Attaching remote stream, tracks:', remote.getTracks().length);
+            remoteVideoRef.current.srcObject = remote;
+          }
+
+          if (remoteVideoRef.current.paused) {
+            remoteVideoRef.current.play().catch(() => {});
+          }
+        } else if (remoteVideoRef.current.srcObject) {
+          // Prevent stale previous stream from staying on screen
+          remoteVideoRef.current.srcObject = null;
         }
       }
 

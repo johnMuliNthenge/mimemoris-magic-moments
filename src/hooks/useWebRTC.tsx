@@ -326,27 +326,26 @@ export function useWebRTC() {
   const createPeerConnection = useCallback(
     (onConnected: () => void) => {
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      const fallbackRemoteStream = new MediaStream();
-      remoteStream.current = fallbackRemoteStream;
+      const receiverRemoteStream = new MediaStream();
+      remoteStream.current = receiverRemoteStream;
 
       pc.ontrack = (event) => {
-        console.log('[WebRTC] ontrack fired, kind:', event.track.kind, 'streams:', event.streams.length);
+        const incomingTrack = event.track;
 
-        // Prefer browser-provided remote stream to avoid accidentally rendering local loopback
-        const incomingStream = event.streams?.[0];
-        if (incomingStream && incomingStream.getTracks().length > 0) {
-          remoteStream.current = incomingStream;
+        // Safety: ignore loopback of local tracks
+        const localTrackIds = new Set(localStream.current?.getTracks().map((t) => t.id) ?? []);
+        if (localTrackIds.has(incomingTrack.id)) {
+          console.warn('[WebRTC] Ignored loopback track:', incomingTrack.kind, incomingTrack.id);
           return;
         }
 
-        // Fallback for browsers that emit track without streams[0]
-        const track = event.track;
-        const alreadyAdded = fallbackRemoteStream.getTracks().some((t) => t.id === track.id);
+        const alreadyAdded = receiverRemoteStream.getTracks().some((t) => t.id === incomingTrack.id);
         if (!alreadyAdded) {
-          fallbackRemoteStream.addTrack(track);
+          receiverRemoteStream.addTrack(incomingTrack);
+          console.log('[WebRTC] Added remote receiver track:', incomingTrack.kind, incomingTrack.id);
         }
 
-        remoteStream.current = fallbackRemoteStream;
+        remoteStream.current = receiverRemoteStream;
       };
 
       pc.onicecandidate = (event) => {
