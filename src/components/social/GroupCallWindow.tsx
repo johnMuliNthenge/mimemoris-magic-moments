@@ -357,6 +357,16 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
         )}
 
         <Button
+          variant={isScreenSharing ? 'default' : 'secondary'}
+          size="icon"
+          className={cn("rounded-full w-12 h-12", isScreenSharing && "bg-primary text-primary-foreground")}
+          onClick={toggleScreenShare}
+          title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+        >
+          {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+        </Button>
+
+        <Button
           variant="destructive"
           size="icon"
           className="rounded-full w-14 h-14"
