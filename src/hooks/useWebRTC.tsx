@@ -279,18 +279,36 @@ export function useWebRTC() {
   }, []);
 
   const getMedia = useCallback(async (callType: CallType) => {
-    const constraints: MediaStreamConstraints = {
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-      video: callType === 'video' ? { width: 640, height: 480, facingMode: 'user' } : false,
-    };
+    const buildConstraints = (mode: CallType): MediaStreamConstraints => ({
+      audio: true,
+      video:
+        mode === 'video'
+          ? {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            }
+          : false,
+    });
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    localStream.current = stream;
-    return stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(buildConstraints(callType));
+      localStream.current = stream;
+      return { stream, resolvedType: callType };
+    } catch (error) {
+      if (callType === 'video') {
+        try {
+          console.warn('[WebRTC] Video media unavailable, falling back to audio:', error);
+          const audioOnlyStream = await navigator.mediaDevices.getUserMedia(buildConstraints('audio'));
+          localStream.current = audioOnlyStream;
+          return { stream: audioOnlyStream, resolvedType: 'audio' as CallType };
+        } catch (audioFallbackError) {
+          console.error('[WebRTC] Audio fallback failed:', audioFallbackError);
+          throw audioFallbackError;
+        }
+      }
+
+      throw error;
+    }
   }, []);
 
   const getChannelName = useCallback(
@@ -481,7 +499,11 @@ export function useWebRTC() {
         await waitForChannelSubscription(channel, 'Caller signaling channel');
         signalingChannel.current = channel;
 
-        const stream = await getMedia(callType);
+        const { stream, resolvedType } = await getMedia(callType);
+        if (resolvedType !== callType) {
+          setCallState((prev) => ({ ...prev, type: resolvedType }));
+        }
+
         const pc = createPeerConnection(() => {
           setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
           markCallConnected();
@@ -494,7 +516,7 @@ export function useWebRTC() {
 
         await sendIncomingNotification(remoteUserId, 'incoming-call', {
           from: user.id,
-          callType,
+          callType: resolvedType,
           callerName: user.user_metadata?.full_name || 'Unknown',
           callerAvatar: user.user_metadata?.avatar_url || undefined,
         });
@@ -536,7 +558,11 @@ export function useWebRTC() {
 
       pendingCandidates.current = [];
 
-      const stream = await getMedia(callType);
+      const { stream, resolvedType } = await getMedia(callType);
+      if (resolvedType !== callType) {
+        setCallState((prev) => ({ ...prev, type: resolvedType }));
+      }
+
       const pc = createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
         markCallConnected();
