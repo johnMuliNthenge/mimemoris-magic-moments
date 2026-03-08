@@ -120,22 +120,19 @@ export function useWebRTC() {
     ) => {
       if (!channel) return;
 
-      const message = {
-        type: 'broadcast' as const,
+      const sanitizedPayload = Object.fromEntries(
+        Object.entries(payload ?? {}).filter(([, value]) => value !== undefined)
+      );
+
+      const result = await channel.send({
+        type: 'broadcast',
         event,
-        payload,
-      };
+        payload: sanitizedPayload,
+      });
 
-      const channelWithHttpSend = channel as ReturnType<typeof supabase.channel> & {
-        httpSend?: (payload: typeof message) => Promise<unknown>;
-      };
-
-      if (typeof channelWithHttpSend.httpSend === 'function') {
-        await channelWithHttpSend.httpSend(message);
-        return;
+      if (result !== 'ok') {
+        throw new Error(`Signal send failed for ${event}: ${result}`);
       }
-
-      await channel.send(message);
     },
     []
   );
