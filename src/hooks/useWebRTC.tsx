@@ -279,18 +279,36 @@ export function useWebRTC() {
   }, []);
 
   const getMedia = useCallback(async (callType: CallType) => {
-    const constraints: MediaStreamConstraints = {
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-      video: callType === 'video' ? { width: 640, height: 480, facingMode: 'user' } : false,
-    };
+    const buildConstraints = (mode: CallType): MediaStreamConstraints => ({
+      audio: true,
+      video:
+        mode === 'video'
+          ? {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+            }
+          : false,
+    });
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    localStream.current = stream;
-    return stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(buildConstraints(callType));
+      localStream.current = stream;
+      return { stream, resolvedType: callType };
+    } catch (error) {
+      if (callType === 'video') {
+        try {
+          console.warn('[WebRTC] Video media unavailable, falling back to audio:', error);
+          const audioOnlyStream = await navigator.mediaDevices.getUserMedia(buildConstraints('audio'));
+          localStream.current = audioOnlyStream;
+          return { stream: audioOnlyStream, resolvedType: 'audio' as CallType };
+        } catch (audioFallbackError) {
+          console.error('[WebRTC] Audio fallback failed:', audioFallbackError);
+          throw audioFallbackError;
+        }
+      }
+
+      throw error;
+    }
   }, []);
 
   const getChannelName = useCallback(
