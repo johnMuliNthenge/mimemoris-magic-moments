@@ -41,9 +41,23 @@ export function NotificationBell() {
         return '💭';
       case 'follow':
         return '👤';
+      case 'trending_like':
+        return '❤️';
+      case 'trending_comment':
+        return '💬';
       default:
         return '🔔';
     }
+  };
+
+  const getNotificationContent = (notification: any) => {
+    // Show just the action part, since the name is shown separately
+    const content = notification.content as string;
+    const fromName = notification.from_profile?.full_name;
+    if (fromName && content.startsWith(fromName)) {
+      return content.slice(fromName.length).trim();
+    }
+    return content;
   };
 
   return (
