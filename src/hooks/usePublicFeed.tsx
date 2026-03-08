@@ -38,24 +38,36 @@ export function usePublicFeed() {
   const { user } = useAuth();
   const [memories, setMemories] = useState<PublicMemory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
-    fetchPublicMemories();
+    fetchPublicMemories(0);
     subscribeToChanges();
   }, [user]);
 
-  const fetchPublicMemories = async () => {
+  const fetchPublicMemories = async (page: number) => {
+    if (page === 0) setLoading(true);
+    else setLoadingMore(true);
+
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
     const { data: memoriesData } = await supabase
       .from('memories')
       .select('*')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .range(from, to);
 
     if (!memoriesData) {
       setLoading(false);
+      setLoadingMore(false);
       return;
     }
+
+    setHasMore(memoriesData.length === PAGE_SIZE);
 
     const signedMemoriesData = await signMediaFields(memoriesData, ['media_url']);
 
@@ -97,8 +109,13 @@ export function usePublicFeed() {
       };
     });
 
-    setMemories(memoriesWithInfo);
+    if (page === 0) {
+      setMemories(memoriesWithInfo);
+    } else {
+      setMemories(prev => [...prev, ...memoriesWithInfo]);
+    }
     setLoading(false);
+    setLoadingMore(false);
   };
 
   const subscribeToChanges = () => {
