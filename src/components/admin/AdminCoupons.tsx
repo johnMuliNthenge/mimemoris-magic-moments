@@ -405,6 +405,68 @@ export function AdminCoupons() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Redemption History */}
+      <Card className="border-border shadow-soft">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="w-5 h-5 text-primary" />
+            Redemption History
+          </CardTitle>
+          <CardDescription>Track which users redeemed coupons and when</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {redemptionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : redemptions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p>No redemptions yet</p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Coupon</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Original</TableHead>
+                    <TableHead>Discounted</TableHead>
+                    <TableHead>Saved</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {redemptions.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.user_name}</TableCell>
+                      <TableCell>
+                        <code className="px-2 py-0.5 bg-muted rounded text-xs font-mono">{r.coupon_code}</code>
+                      </TableCell>
+                      <TableCell className="text-sm">{r.plan_name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">${r.original_price}</TableCell>
+                      <TableCell className="text-sm font-semibold">${r.discounted_price}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          -{r.discount_percentage}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm capitalize">{r.payment_method || '—'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(r.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
