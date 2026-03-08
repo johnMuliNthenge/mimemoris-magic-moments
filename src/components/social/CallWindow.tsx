@@ -58,16 +58,20 @@ export function CallWindow({
   const [isVideoOff, setIsVideoOff] = useState(false);
 
   useEffect(() => {
-    if (localVideoRef.current && localStream.current) {
-      localVideoRef.current.srcObject = localStream.current;
-    }
-  }, [localStream.current, status]);
-
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream.current) {
-      remoteVideoRef.current.srcObject = remoteStream.current;
-    }
-  }, [remoteStream.current, status]);
+    const interval = setInterval(() => {
+      if (localVideoRef.current && localStream.current) {
+        if (localVideoRef.current.srcObject !== localStream.current) {
+          localVideoRef.current.srcObject = localStream.current;
+        }
+      }
+      if (remoteVideoRef.current && remoteStream.current) {
+        if (remoteVideoRef.current.srcObject !== remoteStream.current) {
+          remoteVideoRef.current.srcObject = remoteStream.current;
+        }
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [localStream, remoteStream, status]);
 
   const handleToggleMute = () => {
     setIsMuted(!isMuted);
