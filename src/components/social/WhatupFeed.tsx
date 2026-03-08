@@ -288,7 +288,7 @@ export function WhatupFeed() {
         {posts.length === 0 ? (
           <div className="text-center py-16">
             <Video className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-            <h3 className="text-xl font-semibold mb-2">No Whatup Videos Yet</h3>
+            <h3 className="text-xl font-semibold mb-2">No Trending Videos Yet</h3>
             <p className="text-muted-foreground">Be the first to share a short video!</p>
           </div>
         ) : (
