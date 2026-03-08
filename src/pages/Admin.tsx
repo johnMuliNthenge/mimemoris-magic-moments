@@ -182,9 +182,9 @@ export default function AdminDashboard() {
                       <p className="text-sm text-muted-foreground">{stat.label}</p>
                       <p className="text-3xl font-bold mt-2">{stat.value}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-4 h-4 text-success" />
-                        <span className="text-sm text-success">{stat.change}</span>
-                        <span className="text-xs text-muted-foreground">vs last month</span>
+                        <TrendingUp className={`w-4 h-4 ${stat.positive ? 'text-success' : 'text-destructive rotate-180'}`} />
+                        <span className={`text-sm ${stat.positive ? 'text-success' : 'text-destructive'}`}>{stat.change}</span>
+                        <span className="text-xs text-muted-foreground">{t('vs_last_month')}</span>
                       </div>
                     </div>
                     <div className={`p-3 rounded-xl ${stat.bgColor}`}>
