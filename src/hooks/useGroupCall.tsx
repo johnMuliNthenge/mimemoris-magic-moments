@@ -283,7 +283,7 @@ export function useGroupCall(groupId: string) {
     setParticipants(prev => {
       const next = new Map(prev);
       if (!next.has(userId)) {
-        next.set(userId, { user_id: userId, full_name: fullName, avatar_url: avatarUrl, stream: null, pc: null });
+        next.set(userId, { user_id: userId, full_name: fullName, avatar_url: avatarUrl, stream: null, pc: null, connectionState: 'connecting' });
       }
       return next;
     });
