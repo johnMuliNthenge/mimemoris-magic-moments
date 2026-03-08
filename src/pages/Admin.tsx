@@ -107,6 +107,12 @@ export default function AdminDashboard() {
     }
   };
 
+  const calcChange = (curr: number, prev: number) => {
+    if (prev === 0) return curr > 0 ? '+100%' : '0%';
+    const pct = Math.round(((curr - prev) / prev) * 100);
+    return pct >= 0 ? `+${pct}%` : `${pct}%`;
+  };
+
   const statCards = [
     { 
       label: t('total_users'), 
@@ -114,7 +120,8 @@ export default function AdminDashboard() {
       icon: Users, 
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      change: '+12%'
+      change: calcChange(stats.totalUsers, stats.prevUsers),
+      positive: stats.totalUsers >= stats.prevUsers,
     },
     { 
       label: t('total_memories'), 
@@ -122,7 +129,8 @@ export default function AdminDashboard() {
       icon: BookHeart, 
       color: 'text-accent',
       bgColor: 'bg-accent/10',
-      change: '+8%'
+      change: calcChange(stats.totalMemories, stats.prevMemories),
+      positive: stats.totalMemories >= stats.prevMemories,
     },
     { 
       label: t('active_subscriptions'), 
@@ -130,15 +138,17 @@ export default function AdminDashboard() {
       icon: CreditCard, 
       color: 'text-collab',
       bgColor: 'bg-collab/10',
-      change: '+5%'
+      change: calcChange(stats.activeSubscriptions, stats.prevSubscriptions),
+      positive: stats.activeSubscriptions >= stats.prevSubscriptions,
     },
     { 
-      label: 'Monthly Revenue', 
+      label: t('monthly_revenue'), 
       value: `$${stats.monthlyRevenue.toFixed(2)}`, 
       icon: DollarSign, 
       color: 'text-success',
       bgColor: 'bg-success/10',
-      change: '+15%'
+      change: calcChange(stats.monthlyRevenue, stats.prevRevenue),
+      positive: stats.monthlyRevenue >= stats.prevRevenue,
     },
   ];
 
