@@ -374,6 +374,7 @@ export function useWebRTC() {
             clearTimeout(disconnectTimeout.current);
             disconnectTimeout.current = null;
           }
+          refreshRemoteFromReceivers();
           onConnected();
           return;
         }
