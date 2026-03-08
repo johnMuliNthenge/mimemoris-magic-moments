@@ -160,7 +160,7 @@ export default function AdminDashboard() {
           <div>
             <h1 className="font-display text-3xl font-bold">{t('admin_dashboard')}</h1>
             <p className="text-muted-foreground mt-1">
-              Manage users, subscriptions, and monitor app analytics
+              {t('admin_desc')}
             </p>
           </div>
           <DateRangeFilter onDateChange={handleDateChange} />
