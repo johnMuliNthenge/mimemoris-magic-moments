@@ -97,7 +97,7 @@ export function WhatupFeed() {
     setUploading(true);
     try {
       const fileExt = videoFile.name.split('.').pop();
-      const fileName = `whatup/${user.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/trending-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('memories')
