@@ -165,6 +165,16 @@ export default function SubscriptionPage() {
             setMpesaPolling(false);
             setShowMpesaDialog(false);
             setMpesaPhone('');
+            // Redeem coupon if applied
+            if (appliedCoupon && selectedPlan) {
+              await supabase.rpc('redeem_coupon', {
+                _coupon_id: appliedCoupon.coupon_id,
+                _plan_id: selectedPlan.id,
+                _original_price: selectedPlan.price_monthly,
+                _payment_method: 'mpesa',
+              });
+              removeCoupon();
+            }
             toast({ title: '🎉 Payment Successful!', description: 'Your subscription has been activated.' });
             refetchSubscription();
             checkSubscription();
@@ -204,7 +214,19 @@ export default function SubscriptionPage() {
       try {
         setProcessingMethod('stripe');
         const url = await createCheckout(selectedPlan.stripe_price_id);
-        if (url) window.open(url, '_blank');
+        if (url) {
+          // Redeem coupon before redirecting to Stripe
+          if (appliedCoupon) {
+            await supabase.rpc('redeem_coupon', {
+              _coupon_id: appliedCoupon.coupon_id,
+              _plan_id: selectedPlan.id,
+              _original_price: selectedPlan.price_monthly,
+              _payment_method: 'stripe',
+            });
+            removeCoupon();
+          }
+          window.open(url, '_blank');
+        }
         setShowPaymentDialog(false);
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to start checkout' });

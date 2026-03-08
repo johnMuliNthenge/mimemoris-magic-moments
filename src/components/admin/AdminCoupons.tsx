@@ -9,6 +9,8 @@ import {
   Check,
   CalendarDays,
   Percent,
+  History,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,10 +49,28 @@ interface Coupon {
   created_at: string;
 }
 
+interface Redemption {
+  id: string;
+  coupon_id: string;
+  user_id: string;
+  plan_id: string | null;
+  discount_percentage: number;
+  original_price: number;
+  discounted_price: number;
+  payment_method: string | null;
+  created_at: string;
+  coupon_code?: string;
+  user_email?: string;
+  user_name?: string;
+  plan_name?: string;
+}
+
 export function AdminCoupons() {
   const { toast } = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [redemptionsLoading, setRedemptionsLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -65,6 +85,7 @@ export function AdminCoupons() {
 
   useEffect(() => {
     fetchCoupons();
+    fetchRedemptions();
   }, []);
 
   const fetchCoupons = async () => {
@@ -77,6 +98,44 @@ export function AdminCoupons() {
       setCoupons(data as Coupon[]);
     }
     setLoading(false);
+  };
+
+  const fetchRedemptions = async () => {
+    setRedemptionsLoading(true);
+    const { data, error } = await supabase
+      .from('coupon_redemptions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      // Enrich with coupon codes, user profiles, and plan names
+      const couponIds = [...new Set(data.map(r => r.coupon_id))];
+      const userIds = [...new Set(data.map(r => r.user_id))];
+      const planIds = [...new Set(data.map(r => r.plan_id).filter(Boolean))];
+
+      const [couponsRes, profilesRes, plansRes] = await Promise.all([
+        couponIds.length > 0
+          ? supabase.from('coupons').select('id, code').in('id', couponIds)
+          : { data: [] },
+        userIds.length > 0
+          ? supabase.from('profiles').select('user_id, full_name').in('user_id', userIds)
+          : { data: [] },
+        planIds.length > 0
+          ? supabase.from('subscription_plans').select('id, name').in('id', planIds as string[])
+          : { data: [] },
+      ]);
+
+      const enriched = data.map(r => ({
+        ...r,
+        coupon_code: (couponsRes.data as any[])?.find(c => c.id === r.coupon_id)?.code || 'Unknown',
+        user_name: (profilesRes.data as any[])?.find(p => p.user_id === r.user_id)?.full_name || 'Unknown User',
+        plan_name: r.plan_id ? (plansRes.data as any[])?.find(p => p.id === r.plan_id)?.name || 'Unknown' : '—',
+      })) as Redemption[];
+
+      setRedemptions(enriched);
+    }
+    setRedemptionsLoading(false);
   };
 
   const createCoupon = async () => {
@@ -346,6 +405,68 @@ export function AdminCoupons() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Redemption History */}
+      <Card className="border-border shadow-soft">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="w-5 h-5 text-primary" />
+            Redemption History
+          </CardTitle>
+          <CardDescription>Track which users redeemed coupons and when</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {redemptionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : redemptions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p>No redemptions yet</p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Coupon</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Original</TableHead>
+                    <TableHead>Discounted</TableHead>
+                    <TableHead>Saved</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {redemptions.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.user_name}</TableCell>
+                      <TableCell>
+                        <code className="px-2 py-0.5 bg-muted rounded text-xs font-mono">{r.coupon_code}</code>
+                      </TableCell>
+                      <TableCell className="text-sm">{r.plan_name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">${r.original_price}</TableCell>
+                      <TableCell className="text-sm font-semibold">${r.discounted_price}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          -{r.discount_percentage}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm capitalize">{r.payment_method || '—'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(r.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

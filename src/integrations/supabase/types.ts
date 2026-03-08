@@ -375,6 +375,57 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          discount_percentage: number
+          discounted_price: number
+          id: string
+          original_price: number
+          payment_method: string | null
+          plan_id: string | null
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          discount_percentage: number
+          discounted_price: number
+          id?: string
+          original_price: number
+          payment_method?: string | null
+          plan_id?: string | null
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          discount_percentage?: number
+          discounted_price?: number
+          id?: string
+          original_price?: number
+          payment_method?: string | null
+          plan_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           code: string
@@ -1382,6 +1433,15 @@ export type Database = {
       }
       join_group_by_invite_code: {
         Args: { _invite_code: string }
+        Returns: Json
+      }
+      redeem_coupon: {
+        Args: {
+          _coupon_id: string
+          _original_price: number
+          _payment_method?: string
+          _plan_id: string
+        }
         Returns: Json
       }
       reset_daily_memory_count: {
