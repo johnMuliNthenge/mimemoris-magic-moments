@@ -46,11 +46,7 @@ async function syncOneMemory(memory: Awaited<ReturnType<typeof getPendingMemorie
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('memories')
-        .getPublicUrl(filePath);
-
-      mediaUrl = urlData.publicUrl;
+      mediaUrl = filePath;
     }
 
     // Try AI mood analysis if not already done

@@ -24,6 +24,7 @@ import { useFriends } from '@/hooks/useFriends';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { signMediaFields } from '@/lib/storage-utils';
 
 interface Profile {
   user_id: string;
@@ -100,8 +101,10 @@ export default function UserProfile() {
       .limit(20);
 
     if (memoriesData && memoriesData.length > 0) {
+      const signedMemoriesData = await signMediaFields(memoriesData as PublicMemory[], ['media_url', 'thumbnail_url']);
+
       // Get likes and comments counts
-      const memoryIds = memoriesData.map(m => m.id);
+      const memoryIds = signedMemoriesData.map(m => m.id);
       
       const [{ data: likesData }, { data: commentsData }] = await Promise.all([
         supabase
@@ -125,7 +128,7 @@ export default function UserProfile() {
         commentsCount[comment.memory_id] = (commentsCount[comment.memory_id] || 0) + 1;
       });
 
-      setMemories(memoriesData.map(m => ({
+      setMemories(signedMemoriesData.map(m => ({
         ...m,
         likes_count: likesCount[m.id] || 0,
         comments_count: commentsCount[m.id] || 0

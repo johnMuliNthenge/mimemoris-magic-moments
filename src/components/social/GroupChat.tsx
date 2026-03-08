@@ -290,6 +290,7 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
   };
 
   const handleSend = async () => {
+    if (!user) return;
     if (!newMessage.trim() && !selectedMedia) return;
     
     setSending(true);
@@ -308,7 +309,7 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
         }
 
         const fileExt = selectedMedia.name.split('.').pop();
-        const fileName = `group-chat/${groupId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const fileName = `${user.id}/group-chat/${groupId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('memories')
@@ -316,11 +317,7 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('memories')
-          .getPublicUrl(fileName);
-
-        mediaUrl = publicUrl;
+        mediaUrl = fileName;
         mediaType = selectedMedia.type.startsWith('video/') ? 'video' : 'image';
       } catch (error) {
         toast.error('Failed to upload media');

@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { MemoriesView } from '@/components/memory/MemoriesView';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { signMediaFields } from '@/lib/storage-utils';
 
 interface Memory {
   id: string;
@@ -42,7 +43,8 @@ export default function MemoriesListPage() {
       .order('memory_date', { ascending: false });
 
     if (data) {
-      setMemories(data as Memory[]);
+      const signedMemories = await signMediaFields(data as Memory[], ['media_url']);
+      setMemories(signedMemories as Memory[]);
     }
     setLoading(false);
   };

@@ -1,10 +1,44 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+const ALLOWED_MEMORY_TYPES = new Set(['text', 'audio', 'video', 'photo']);
+const MAX_CONTENT_LENGTH = 5000;
+const MAX_MOOD_LENGTH = 100;
+const MAX_MEDIA_URL_LENGTH = 2048;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
+
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+
+function isWithinRateLimit(userId: string) {
+  const now = Date.now();
+  const current = rateLimitMap.get(userId);
+
+  if (!current || now - current.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(userId, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  current.count += 1;
+  return true;
+}
+
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
 
 // Comprehensive emoji mapping for moods
 const moodEmojiMap: Record<string, string> = {
@@ -63,7 +97,75 @@ serve(async (req) => {
   }
 
   try {
-    const { content, memoryType, mood, mediaUrl } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
+    const token = authHeader.slice('Bearer '.length).trim();
+    if (!token) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing backend env vars for auth validation');
+      return jsonResponse({ error: 'Service temporarily unavailable' }, 503);
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+      auth: {
+        persistSession: false,
+      },
+    });
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    if (authError || !user) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
+    if (!isWithinRateLimit(user.id)) {
+      return jsonResponse({ error: 'Rate limit exceeded. Please try again shortly.' }, 429);
+    }
+
+    let payload: Record<string, unknown>;
+    try {
+      payload = await req.json();
+    } catch {
+      return jsonResponse({ error: 'Invalid request payload' }, 400);
+    }
+
+    const rawContent = typeof payload.content === 'string' ? payload.content : '';
+    const rawMemoryType = typeof payload.memoryType === 'string' ? payload.memoryType : '';
+    const rawMood = typeof payload.mood === 'string' ? payload.mood : '';
+    const rawMediaUrl = typeof payload.mediaUrl === 'string' ? payload.mediaUrl : '';
+
+    const memoryType = rawMemoryType.trim().toLowerCase();
+    if (!ALLOWED_MEMORY_TYPES.has(memoryType)) {
+      return jsonResponse({ error: 'Invalid memory type' }, 400);
+    }
+
+    const content = rawContent.trim().replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, MAX_CONTENT_LENGTH);
+    const mood = rawMood.trim().replace(/[\r\n]+/g, ' ').slice(0, MAX_MOOD_LENGTH);
+    const mediaUrl = rawMediaUrl.trim().slice(0, MAX_MEDIA_URL_LENGTH);
+
+    if (rawContent.length > MAX_CONTENT_LENGTH) {
+      return jsonResponse({ error: 'Content is too long' }, 400);
+    }
+
+    if (rawMood.length > MAX_MOOD_LENGTH) {
+      return jsonResponse({ error: 'Mood value is too long' }, 400);
+    }
+
+    if (rawMediaUrl.length > MAX_MEDIA_URL_LENGTH) {
+      return jsonResponse({ error: 'Media URL is too long' }, 400);
+    }
 
     // Build a context-aware prompt depending on what content is available
     let contentDescription = '';
@@ -125,31 +227,26 @@ Be empathetic and thorough. Even short text can reveal deep emotions. Consider w
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI API error response:', errorText);
-      
+      console.error('AI API error response:', response.status, errorText);
+
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again shortly.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'Rate limit exceeded. Please try again shortly.' }, 429);
       }
+
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add credits.' }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'AI credits exhausted. Please add credits.' }, 402);
       }
-      throw new Error(`AI API error: ${response.status} - ${errorText}`);
+
+      return jsonResponse({ error: 'Failed to analyze mood right now. Please try again.' }, 502);
     }
 
     const data = await response.json();
-    const analysisText = data.choices[0].message.content;
-    
+    const analysisText = data?.choices?.[0]?.message?.content;
+
     // Parse the JSON response - handle potential markdown wrapping
-    let analysis;
+    let analysis: Record<string, unknown>;
     try {
-      // Strip markdown code block if present
-      let cleanText = analysisText.trim();
+      let cleanText = typeof analysisText === 'string' ? analysisText.trim() : '';
       if (cleanText.startsWith('```')) {
         cleanText = cleanText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
       }
@@ -162,32 +259,29 @@ Be empathetic and thorough. Even short text can reveal deep emotions. Consider w
         themes: ['life'],
         insight: 'This memory captures a moment in your life.',
         suggestedActions: ['Reflect on what made this moment meaningful'],
-        confidence: 0.3
+        confidence: 0.3,
       };
     }
 
+    const primaryEmotion = typeof analysis.primary_emotion === 'string' ? analysis.primary_emotion : 'reflective';
+    const sentiment = typeof analysis.sentiment === 'string' ? analysis.sentiment : 'neutral';
+    const emotions = Array.isArray(analysis.emotions)
+      ? analysis.emotions.filter((value): value is string => typeof value === 'string')
+      : [];
+
     // Map the primary emotion to an emoji
-    const detectedEmoji = mapEmoji(
-      [analysis.primary_emotion, ...(analysis.emotions || [])],
-      analysis.sentiment
-    );
+    const detectedEmoji = mapEmoji([primaryEmotion, ...emotions], sentiment);
 
     // Return enriched analysis with emoji
     const enrichedAnalysis = {
       ...analysis,
       emoji: detectedEmoji,
-      mood_label: analysis.primary_emotion,
+      mood_label: primaryEmotion,
     };
 
-    return new Response(JSON.stringify(enrichedAnalysis), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse(enrichedAnalysis);
   } catch (error: unknown) {
     console.error('Error analyzing mood:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Failed to analyze mood right now. Please try again.' }, 500);
   }
 });

@@ -29,16 +29,14 @@ export function usePaymentMethods() {
         } catch { paypalConfigured = false; }
       }
 
-      // Check M-Pesa from database
+      // Check M-Pesa availability via restricted RPC (no credential exposure)
       let mpesaConfigured = false;
-      const { data: mpesaConfig } = await supabase
-        .from('mpesa_config')
-        .select('is_active')
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-      
-      mpesaConfigured = !!mpesaConfig;
+      const { data: mpesaStatusRows, error: mpesaStatusError } = await (supabase as any)
+        .rpc('get_mpesa_public_status');
+
+      if (!mpesaStatusError && Array.isArray(mpesaStatusRows)) {
+        mpesaConfigured = mpesaStatusRows.some((row: { is_active?: boolean }) => row?.is_active === true);
+      }
 
       setConfiguredMethods({
         stripe: stripeConfigured,

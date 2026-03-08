@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { signMediaFields, signSingleMediaUrl } from '@/lib/storage-utils';
 
 interface GroupMessage {
   id: string;
@@ -104,14 +105,16 @@ export function useGroupChat(groupId?: string) {
       return;
     }
 
+    const signedMessages = await signMediaFields(data as GroupMessage[], ['media_url']);
+
     // Fetch sender profiles
-    const senderIds = [...new Set(data.map(m => m.sender_id))];
+    const senderIds = [...new Set(signedMessages.map(m => m.sender_id))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, full_name, avatar_url')
       .in('user_id', senderIds);
 
-    const messagesWithProfiles = data.map(msg => ({
+    const messagesWithProfiles = signedMessages.map(msg => ({
       ...msg,
       sender_profile: profiles?.find(p => p.user_id === msg.sender_id)
     })) as GroupMessage[];
@@ -156,6 +159,8 @@ export function useGroupChat(groupId?: string) {
       }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newMsg = payload.new as GroupMessage;
+          const signedMediaUrl = await signSingleMediaUrl(newMsg.media_url || null);
+
           // Fetch sender profile
           const { data: profile } = await supabase
             .from('profiles')
@@ -163,10 +168,11 @@ export function useGroupChat(groupId?: string) {
             .eq('user_id', newMsg.sender_id)
             .single();
           
-          setMessages(prev => [...prev, { ...newMsg, sender_profile: profile || undefined }]);
+          setMessages(prev => [...prev, { ...newMsg, media_url: signedMediaUrl, sender_profile: profile || undefined }]);
         } else if (payload.eventType === 'UPDATE') {
           const updatedMsg = payload.new as GroupMessage;
-          setMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg } : m));
+          const signedMediaUrl = await signSingleMediaUrl(updatedMsg.media_url || null);
+          setMessages(prev => prev.map(m => m.id === updatedMsg.id ? { ...m, ...updatedMsg, media_url: signedMediaUrl } : m));
         } else if (payload.eventType === 'DELETE') {
           const deletedMsg = payload.old as { id: string };
           setMessages(prev => prev.filter(m => m.id !== deletedMsg.id));

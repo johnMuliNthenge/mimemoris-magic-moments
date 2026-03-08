@@ -979,6 +979,13 @@ export type Database = {
           name: string
         }[]
       }
+      get_mpesa_public_status: {
+        Args: never
+        Returns: {
+          environment: string
+          is_active: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
