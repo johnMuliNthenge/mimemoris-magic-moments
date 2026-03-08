@@ -84,6 +84,47 @@ export default function SubscriptionPage() {
     setShowPaymentDialog(true);
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('validate_coupon', { _code: couponCode.trim() }) as { data: any; error: any };
+      if (error) throw error;
+      if (!data?.valid) {
+        toast({ variant: 'destructive', title: 'Invalid Coupon', description: data?.error || 'Could not apply coupon.' });
+        setAppliedCoupon(null);
+      } else {
+        setAppliedCoupon({
+          coupon_id: data.coupon_id,
+          code: data.code,
+          discount_percentage: data.discount_percentage,
+        });
+        toast({ title: `Coupon Applied! 🎉`, description: `You get ${data.discount_percentage}% off!` });
+      }
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+  };
+
+  const getDiscountedPrice = (price: number) => {
+    if (!appliedCoupon) return price;
+    return Math.round((price * (100 - appliedCoupon.discount_percentage)) * 100) / 100 / 100;
+  };
+      toast({ variant: 'destructive', title: 'Login Required', description: 'Please log in to subscribe.' });
+      return;
+    }
+    refetchPaymentMethods();
+    setSelectedPlan(plan);
+    setShowPaymentDialog(true);
+  };
+
   const handleMpesaPayment = async () => {
     if (!selectedPlan || !mpesaPhone || !user) return;
 
