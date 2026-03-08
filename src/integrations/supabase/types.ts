@@ -281,6 +281,35 @@ export type Database = {
           },
         ]
       }
+      collaboration_otp: {
+        Row: {
+          collaboration_id: string
+          created_at: string
+          id: string
+          otp_code: string
+        }
+        Insert: {
+          collaboration_id: string
+          created_at?: string
+          id?: string
+          otp_code: string
+        }
+        Update: {
+          collaboration_id?: string
+          created_at?: string
+          id?: string
+          otp_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaboration_otp_collaboration_id_fkey"
+            columns: ["collaboration_id"]
+            isOneToOne: true
+            referencedRelation: "collaboration_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collaboration_participants: {
         Row: {
           collaboration_id: string
