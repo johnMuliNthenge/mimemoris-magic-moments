@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { useChat } from '@/hooks/useChat';
+import { useWebRTC } from '@/hooks/useWebRTC';
+import { CallWindow } from '@/components/social/CallWindow';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -185,6 +187,17 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const { user } = useAuth();
   const { messages, sendMessage, editMessage, deleteMessage, canEditMessage, loading } = useChat(selectedUserId || undefined);
+  const {
+    callState,
+    localStream,
+    remoteStream,
+    initiateCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMute,
+    toggleVideo,
+  } = useWebRTC();
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<any>(null);
@@ -241,11 +254,48 @@ export function ChatWindow({
             {selectedUserName?.[0] || 'U'}
           </AvatarFallback>
         </Avatar>
-        <div>
+        <div className="flex-1">
           <p className="font-medium">{selectedUserName || 'Unknown User'}</p>
           <p className="text-xs text-muted-foreground">Online</p>
         </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() => initiateCall(selectedUserId!, 'audio', selectedUserName, selectedUserAvatar)}
+            title="Audio call"
+          >
+            <Phone className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() => initiateCall(selectedUserId!, 'video', selectedUserName, selectedUserAvatar)}
+            title="Video call"
+          >
+            <Video className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
+
+      {/* Call Window */}
+      <CallWindow
+        status={callState.status}
+        type={callState.type}
+        remoteUserName={callState.remoteUserName || selectedUserName}
+        remoteUserAvatar={callState.remoteUserAvatar || selectedUserAvatar}
+        isIncoming={callState.isIncoming}
+        duration={callState.duration}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+        onEnd={endCall}
+        onToggleMute={toggleMute}
+        onToggleVideo={toggleVideo}
+      />
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
