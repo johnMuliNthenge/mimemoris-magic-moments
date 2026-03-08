@@ -627,19 +627,26 @@ export function useWebRTC() {
         try {
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
 
-          if (!localStream.current) {
+          const shouldAcquireLocalMedia =
+            !localStream.current ||
+            !localStream.current.getTracks().some((track) => track.readyState === 'live');
+
+          if (shouldAcquireLocalMedia) {
             const { stream, resolvedType } = await getMedia(initialCallType);
             if (resolvedType !== initialCallType) {
               setCallState((prev) => ({ ...prev, type: resolvedType }));
             }
+          }
 
-            stream.getTracks().forEach((track) => {
+          const activeStream = localStream.current;
+          if (activeStream) {
+            activeStream.getTracks().forEach((track) => {
               const alreadySending = peerConnection.current
                 ?.getSenders()
                 .some((sender) => sender.track === track);
 
               if (!alreadySending) {
-                peerConnection.current?.addTrack(track, stream);
+                peerConnection.current?.addTrack(track, activeStream);
               }
             });
           }
