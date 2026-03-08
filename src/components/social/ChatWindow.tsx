@@ -254,11 +254,48 @@ export function ChatWindow({
             {selectedUserName?.[0] || 'U'}
           </AvatarFallback>
         </Avatar>
-        <div>
+        <div className="flex-1">
           <p className="font-medium">{selectedUserName || 'Unknown User'}</p>
           <p className="text-xs text-muted-foreground">Online</p>
         </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() => initiateCall(selectedUserId!, 'audio', selectedUserName, selectedUserAvatar)}
+            title="Audio call"
+          >
+            <Phone className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() => initiateCall(selectedUserId!, 'video', selectedUserName, selectedUserAvatar)}
+            title="Video call"
+          >
+            <Video className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
+
+      {/* Call Window */}
+      <CallWindow
+        status={callState.status}
+        type={callState.type}
+        remoteUserName={callState.remoteUserName || selectedUserName}
+        remoteUserAvatar={callState.remoteUserAvatar || selectedUserAvatar}
+        isIncoming={callState.isIncoming}
+        duration={callState.duration}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        onAccept={acceptCall}
+        onReject={rejectCall}
+        onEnd={endCall}
+        onToggleMute={toggleMute}
+        onToggleVideo={toggleVideo}
+      />
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
