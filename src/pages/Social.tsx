@@ -116,21 +116,8 @@ export default function SocialPage() {
             <div className="grid md:grid-cols-3 gap-4 h-[600px]">
               {/* Conversations list */}
               <div className="md:col-span-1 border border-border rounded-lg overflow-hidden">
-                <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                <div className="p-3 border-b border-border bg-muted/30">
                   <h3 className="font-medium">Conversations</h3>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setShowCallHistory(true)}
-                      >
-                        <History className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Call History</TooltipContent>
-                  </Tooltip>
                 </div>
                 <ScrollArea className="h-[calc(100%-48px)]">
                   {conversations.length === 0 ? (
