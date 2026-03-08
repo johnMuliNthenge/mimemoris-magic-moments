@@ -228,7 +228,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   {stat.clickable && (
-                    <p className="text-xs text-muted-foreground mt-2">Click to view →</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t('click_to_view')}</p>
                   )}
                 </CardContent>
               </Card>
