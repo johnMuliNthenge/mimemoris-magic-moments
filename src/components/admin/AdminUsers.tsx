@@ -153,10 +153,12 @@ export function AdminUsers() {
     if (!manageSubUser?.subscription) return;
     setSavingSub(true);
     try {
-      const { error } = await supabase
-        .from('user_subscriptions')
-        .update({ status: 'canceled', updated_at: new Date().toISOString() })
-        .eq('id', manageSubUser.subscription.id);
+      const { error } = await supabase.rpc('upsert_user_subscription', {
+        _user_id: manageSubUser.id,
+        _plan_id: manageSubUser.subscription.plan_id,
+        _status: 'canceled',
+        _period_end: null,
+      });
       if (error) throw error;
       toast({ title: 'Subscription Canceled', description: 'User subscription has been canceled.' });
       setManageSubUser(null);

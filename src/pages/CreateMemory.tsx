@@ -284,15 +284,9 @@ export default function CreateMemory() {
 
       if (error) throw error;
 
-      // Update memories used count
+      // Update memories used count using secure RPC
       if (subscription) {
-        await supabase
-          .from('user_subscriptions')
-          .update({ 
-            memories_used_today: subscription.memories_used_today + 1,
-            last_memory_date: new Date().toISOString().split('T')[0]
-          })
-          .eq('id', subscription.id);
+        await supabase.rpc('increment_memory_usage', { _subscription_id: subscription.id });
       }
 
       toast({
