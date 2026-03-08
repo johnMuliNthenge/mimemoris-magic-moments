@@ -326,24 +326,27 @@ export function useWebRTC() {
   const createPeerConnection = useCallback(
     (onConnected: () => void) => {
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      const newRemoteStream = new MediaStream();
-      remoteStream.current = newRemoteStream;
+      const fallbackRemoteStream = new MediaStream();
+      remoteStream.current = fallbackRemoteStream;
 
       pc.ontrack = (event) => {
-        console.log('[WebRTC] ontrack fired, track kind:', event.track.kind);
-        // Add remote tracks directly
-        const track = event.track;
-        const alreadyAdded = newRemoteStream
-          .getTracks()
-          .some((t) => t.id === track.id);
+        console.log('[WebRTC] ontrack fired, kind:', event.track.kind, 'streams:', event.streams.length);
 
-        if (!alreadyAdded) {
-          newRemoteStream.addTrack(track);
-          console.log('[WebRTC] Remote track added:', track.kind, 'total:', newRemoteStream.getTracks().length);
+        // Prefer browser-provided remote stream to avoid accidentally rendering local loopback
+        const incomingStream = event.streams?.[0];
+        if (incomingStream && incomingStream.getTracks().length > 0) {
+          remoteStream.current = incomingStream;
+          return;
         }
 
-        // Force remoteStream ref update so polling in CallWindow picks it up
-        remoteStream.current = newRemoteStream;
+        // Fallback for browsers that emit track without streams[0]
+        const track = event.track;
+        const alreadyAdded = fallbackRemoteStream.getTracks().some((t) => t.id === track.id);
+        if (!alreadyAdded) {
+          fallbackRemoteStream.addTrack(track);
+        }
+
+        remoteStream.current = fallbackRemoteStream;
       };
 
       pc.onicecandidate = (event) => {
@@ -450,7 +453,7 @@ export function useWebRTC() {
         });
 
         channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
-          if (!peerConnection.current || !payload?.answer) return;
+          if (!peerConnection.current || !payload?.answer || payload?.from !== remoteUserId) return;
 
           try {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.answer));
@@ -468,9 +471,9 @@ export function useWebRTC() {
           }
         });
 
-        channel.on('broadcast', { event: 'ready-for-offer' }, async () => {
+        channel.on('broadcast', { event: 'ready-for-offer' }, async ({ payload }) => {
           const pc = peerConnection.current;
-          if (!pc || !user.id) return;
+          if (!pc || !user.id || payload?.from !== remoteUserId) return;
 
           try {
             if (!pc.localDescription) {
@@ -490,7 +493,7 @@ export function useWebRTC() {
         });
 
         channel.on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-          if (!payload?.candidate || payload.from === user.id || !peerConnection.current) return;
+          if (!payload?.candidate || payload.from !== remoteUserId || !peerConnection.current) return;
 
           try {
             if (peerConnection.current.remoteDescription) {
@@ -503,11 +506,13 @@ export function useWebRTC() {
           }
         });
 
-        channel.on('broadcast', { event: 'end-call' }, () => {
+        channel.on('broadcast', { event: 'end-call' }, ({ payload }) => {
+          if (payload?.from !== remoteUserId) return;
           cleanup(getRemoteEndedStatus());
         });
 
-        channel.on('broadcast', { event: 'reject-call' }, () => {
+        channel.on('broadcast', { event: 'reject-call' }, ({ payload }) => {
+          if (payload?.from !== remoteUserId) return;
           cleanup('rejected');
         });
 
@@ -591,7 +596,7 @@ export function useWebRTC() {
       });
 
       channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
-        if (!peerConnection.current || !payload?.offer) return;
+        if (!peerConnection.current || !payload?.offer || payload?.from !== remoteUserId) return;
 
         try {
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
@@ -619,7 +624,7 @@ export function useWebRTC() {
       });
 
       channel.on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-        if (!payload?.candidate || payload.from === user.id || !peerConnection.current) return;
+        if (!payload?.candidate || payload.from !== remoteUserId || !peerConnection.current) return;
 
         try {
           if (peerConnection.current.remoteDescription) {
@@ -632,11 +637,13 @@ export function useWebRTC() {
         }
       });
 
-      channel.on('broadcast', { event: 'end-call' }, () => {
+      channel.on('broadcast', { event: 'end-call' }, ({ payload }) => {
+        if (payload?.from !== remoteUserId) return;
         cleanup(getRemoteEndedStatus());
       });
 
-      channel.on('broadcast', { event: 'reject-call' }, () => {
+      channel.on('broadcast', { event: 'reject-call' }, ({ payload }) => {
+        if (payload?.from !== remoteUserId) return;
         cleanup('rejected');
       });
 
@@ -726,17 +733,20 @@ export function useWebRTC() {
     });
 
     incomingChannel.on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
-      if (!payload?.from) return;
+      const callerId = payload?.from as string | undefined;
+      const incomingType = payload?.callType as CallType | undefined;
+
+      if (!callerId || callerId === user.id || (incomingType !== 'audio' && incomingType !== 'video')) return;
 
       setCallState((prev) => {
         if (prev.status !== 'idle') return prev;
 
-        void beginCallHistory(payload.from, 'incoming', payload.callType);
+        void beginCallHistory(callerId, 'incoming', incomingType);
 
         return {
           status: 'ringing',
-          type: payload.callType,
-          remoteUserId: payload.from,
+          type: incomingType,
+          remoteUserId: callerId,
           remoteUserName: payload.callerName,
           remoteUserAvatar: payload.callerAvatar,
           isIncoming: true,
