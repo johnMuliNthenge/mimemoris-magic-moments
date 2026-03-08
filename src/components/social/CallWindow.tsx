@@ -218,7 +218,7 @@ export function CallWindow({
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
                   <Button
                     size="lg"
-                    className="rounded-full w-14 h-14 bg-green-500 hover:bg-green-600"
+                    className="rounded-full w-14 h-14 bg-primary text-primary-foreground hover:bg-primary/90"
                     onClick={onAccept}
                   >
                     <PhoneIncoming className="w-6 h-6" />
