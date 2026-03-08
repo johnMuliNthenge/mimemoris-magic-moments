@@ -11,7 +11,9 @@ import {
   Send,
   Pencil,
   Check,
-  X
+  X,
+  Flag,
+  MoreVertical,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
