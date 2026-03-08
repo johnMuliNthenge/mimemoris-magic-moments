@@ -258,14 +258,31 @@ export function PublicFeed() {
                       {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
                     </p>
                   </div>
-                  {canEdit(memory) && editingId !== memory.id && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(memory)}>
-                      <Pencil className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                  )}
-                  {memory.mood && (
-                    <span className="text-2xl">{memory.mood}</span>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {canEdit(memory) && editingId !== memory.id && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(memory)}>
+                        <Pencil className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    )}
+                    {user && memory.user_id !== user.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleReport(memory)} className="gap-2 text-destructive">
+                            <Flag className="w-4 h-4" />
+                            Report
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {memory.mood && (
+                      <span className="text-2xl">{memory.mood}</span>
+                    )}
+                  </div>
                 </CardHeader>
                 
                 <CardContent className="pb-3">
