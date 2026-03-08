@@ -329,23 +329,23 @@ export function useWebRTC() {
       const receiverRemoteStream = new MediaStream();
       remoteStream.current = receiverRemoteStream;
 
-      const refreshRemoteFromReceivers = () => {
-        const localTrackIds = new Set(localStream.current?.getTracks().map((t) => t.id) ?? []);
-        const receiverTracks = pc
-          .getReceivers()
-          .map((receiver) => receiver.track)
+      const getLocalTrackIds = () => new Set(localStream.current?.getTracks().map((track) => track.id) ?? []);
+
+      const syncRemoteTracks = (tracks: MediaStreamTrack[]) => {
+        const localTrackIds = getLocalTrackIds();
+        const incomingTracks = tracks
           .filter((track): track is MediaStreamTrack => Boolean(track) && track.readyState === 'live')
           .filter((track) => !localTrackIds.has(track.id));
 
-        if (receiverTracks.length === 0) return;
+        if (incomingTracks.length === 0) return;
 
         receiverRemoteStream.getTracks().forEach((track) => {
-          if (!receiverTracks.some((incoming) => incoming.id === track.id)) {
+          if (!incomingTracks.some((incoming) => incoming.id === track.id)) {
             receiverRemoteStream.removeTrack(track);
           }
         });
 
-        receiverTracks.forEach((track) => {
+        incomingTracks.forEach((track) => {
           const exists = receiverRemoteStream.getTracks().some((existing) => existing.id === track.id);
           if (!exists) receiverRemoteStream.addTrack(track);
         });
@@ -353,8 +353,31 @@ export function useWebRTC() {
         remoteStream.current = receiverRemoteStream;
       };
 
-      pc.ontrack = () => {
-        refreshRemoteFromReceivers();
+      const refreshRemoteFromReceivers = () => {
+        const receiverTracks = pc
+          .getReceivers()
+          .map((receiver) => receiver.track)
+          .filter((track): track is MediaStreamTrack => Boolean(track));
+
+        syncRemoteTracks(receiverTracks);
+      };
+
+      pc.ontrack = (event) => {
+        const streamTracks = event.streams?.[0]?.getTracks() ?? [];
+
+        if (streamTracks.length > 0) {
+          syncRemoteTracks(streamTracks);
+        } else if (event.track) {
+          syncRemoteTracks([event.track]);
+        } else {
+          refreshRemoteFromReceivers();
+        }
+
+        if (event.track) {
+          event.track.onunmute = () => {
+            refreshRemoteFromReceivers();
+          };
+        }
       };
 
       pc.onicecandidate = (event) => {
@@ -574,7 +597,7 @@ export function useWebRTC() {
     if (!callStateRef.current.remoteUserId || !user?.id) return;
 
     const remoteUserId = callStateRef.current.remoteUserId;
-    const callType = callStateRef.current.type;
+    const initialCallType = callStateRef.current.type;
 
     try {
       if (
@@ -582,22 +605,16 @@ export function useWebRTC() {
         activeCallLog.current.direction !== 'incoming' ||
         activeCallLog.current.peerUserId !== remoteUserId
       ) {
-        await beginCallHistory(remoteUserId, 'incoming', callType);
+        await beginCallHistory(remoteUserId, 'incoming', initialCallType);
       }
 
       pendingCandidates.current = [];
 
-      const { stream, resolvedType } = await getMedia(callType);
-      if (resolvedType !== callType) {
-        setCallState((prev) => ({ ...prev, type: resolvedType }));
-      }
-
-      const pc = createPeerConnection(() => {
+      createPeerConnection(() => {
         setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
         markCallConnected();
         startDurationTimer();
       });
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       const channelName = getChannelName(remoteUserId);
       const channel = supabase.channel(channelName, {
@@ -609,6 +626,23 @@ export function useWebRTC() {
 
         try {
           await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.offer));
+
+          if (!localStream.current) {
+            const { stream, resolvedType } = await getMedia(initialCallType);
+            if (resolvedType !== initialCallType) {
+              setCallState((prev) => ({ ...prev, type: resolvedType }));
+            }
+
+            stream.getTracks().forEach((track) => {
+              const alreadySending = peerConnection.current
+                ?.getSenders()
+                .some((sender) => sender.track?.id === track.id);
+
+              if (!alreadySending) {
+                peerConnection.current?.addTrack(track, stream);
+              }
+            });
+          }
 
           for (const candidate of pendingCandidates.current) {
             await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
