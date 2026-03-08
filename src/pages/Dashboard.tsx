@@ -392,7 +392,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">{collaborationsCount} collaboration{collaborationsCount !== 1 ? 's' : ''}</p>
-                        <p className="text-xs text-muted-foreground">Click to view details</p>
+                        <p className="text-xs text-muted-foreground">{t('click_to_view')}</p>
                       </div>
                     </div>
                   ) : (
