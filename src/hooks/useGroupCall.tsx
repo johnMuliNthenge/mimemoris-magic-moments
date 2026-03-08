@@ -539,8 +539,8 @@ export function useGroupCall(groupId: string) {
 
     setParticipants(new Map());
     setIsHost(false);
-    setIsMuted(false);
     setIsVideoOff(false);
+    setIsScreenSharing(false);
     if (resetStatus) {
       setStatus('idle');
       setActiveCall(null);
