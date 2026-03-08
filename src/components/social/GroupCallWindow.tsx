@@ -24,14 +24,16 @@ function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
   isLocal?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hasVideo = !!stream?.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
+    if (!videoRef.current || !stream) return;
 
-  const hasVideo = stream?.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
+    videoRef.current.srcObject = stream;
+    void videoRef.current.play().catch(() => {
+      // Browser may block autoplay until user interaction
+    });
+  }, [stream, hasVideo]);
 
   return (
     <div className="relative bg-muted rounded-xl overflow-hidden aspect-video flex items-center justify-center min-h-[120px]">
