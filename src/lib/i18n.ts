@@ -1025,6 +1025,7 @@ const resources = {
 
       ...analyticsKeys.zh,
       ...timelockKeys.zh,
+      ...notificationKeys.zh,
     }
   }
 };
