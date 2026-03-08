@@ -208,15 +208,8 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
   );
   const {
     callState,
-    localStream,
-    remoteStream,
     initiateCall,
-    acceptCall,
-    rejectCall,
-    endCall,
-    toggleMute,
-    toggleVideo,
-  } = useWebRTC();
+  } = useGlobalWebRTC();
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
