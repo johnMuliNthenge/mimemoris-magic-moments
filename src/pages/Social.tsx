@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Users, MessageCircle, Globe, UsersRound } from 'lucide-react';
+import { Users, MessageCircle, Globe, UsersRound, History } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FriendsList } from '@/components/social/FriendsList';
@@ -10,12 +10,16 @@ import { PublicFeed } from '@/components/social/PublicFeed';
 import { GroupChat } from '@/components/social/GroupChat';
 import { CreateGroupDialog } from '@/components/social/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/social/JoinGroupDialog';
+import { CallHistoryPanel } from '@/components/social/CallHistoryPanel';
 import { useChat } from '@/hooks/useChat';
 import { useFriends } from '@/hooks/useFriends';
 import { useGroupChat } from '@/hooks/useGroupChat';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export default function SocialPage() {
@@ -27,10 +31,15 @@ export default function SocialPage() {
     avatar?: string;
   } | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [showCallHistory, setShowCallHistory] = useState(false);
   
   const { conversations } = useChat();
-  const { friends } = useFriends();
+  const { friends, pendingRequests } = useFriends();
   const { groups } = useGroupChat();
+  const { messages: unreadMessages, friendRequests: unreadFriendRequests } = useUnreadCounts();
+
+  const chatUnread = conversations.reduce((acc, c) => acc + c.unread_count, 0);
+  const incomingRequests = pendingRequests.filter(r => r.is_follower).length;
 
   const handleStartChat = (userId: string) => {
     const friend = friends.find(f => f.user_id === userId);
@@ -72,16 +81,21 @@ export default function SocialPage() {
               <Globe className="w-4 h-4" />
               <span className="hidden sm:inline">Feed</span>
             </TabsTrigger>
-            <TabsTrigger value="friends" className="gap-2">
+            <TabsTrigger value="friends" className="gap-2 relative">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Friends</span>
+              {incomingRequests > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 text-xs justify-center">
+                  {incomingRequests}
+                </Badge>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-2">
+            <TabsTrigger value="chat" className="gap-2 relative">
               <MessageCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Chat</span>
-              {conversations.reduce((acc, c) => acc + c.unread_count, 0) > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 justify-center">
-                  {conversations.reduce((acc, c) => acc + c.unread_count, 0)}
+              {chatUnread > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1 text-xs justify-center">
+                  {chatUnread}
                 </Badge>
               )}
             </TabsTrigger>
@@ -103,8 +117,21 @@ export default function SocialPage() {
             <div className="grid md:grid-cols-3 gap-4 h-[600px]">
               {/* Conversations list */}
               <div className="md:col-span-1 border border-border rounded-lg overflow-hidden">
-                <div className="p-3 border-b border-border bg-muted/30">
+                <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between">
                   <h3 className="font-medium">Conversations</h3>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setShowCallHistory(true)}
+                      >
+                        <History className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Call History</TooltipContent>
+                  </Tooltip>
                 </div>
                 <ScrollArea className="h-[calc(100%-48px)]">
                   {conversations.length === 0 ? (
@@ -151,14 +178,18 @@ export default function SocialPage() {
                 </ScrollArea>
               </div>
 
-              {/* Chat window */}
+              {/* Chat window or Call History */}
               <div className="md:col-span-2 border border-border rounded-lg overflow-hidden">
-                <ChatWindow
-                  selectedUserId={selectedChatUser?.id || null}
-                  selectedUserName={selectedChatUser?.name}
-                  selectedUserAvatar={selectedChatUser?.avatar}
-                  onBack={() => setSelectedChatUser(null)}
-                />
+                {showCallHistory ? (
+                  <CallHistoryPanel onBack={() => setShowCallHistory(false)} />
+                ) : (
+                  <ChatWindow
+                    selectedUserId={selectedChatUser?.id || null}
+                    selectedUserName={selectedChatUser?.name}
+                    selectedUserAvatar={selectedChatUser?.avatar}
+                    onBack={() => setSelectedChatUser(null)}
+                  />
+                )}
               </div>
             </div>
           </TabsContent>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { playMessageSound } from '@/lib/notification-sound';
 
 interface Message {
   id: string;
@@ -142,6 +143,10 @@ export function useChat(selectedUserId?: string) {
           if (newMsg.sender_id === user.id || newMsg.receiver_id === user.id) {
             if (selectedUserId && (newMsg.sender_id === selectedUserId || newMsg.receiver_id === selectedUserId)) {
               setMessages(prev => [...prev, newMsg]);
+            }
+            // Play sound for incoming messages
+            if (newMsg.receiver_id === user.id && newMsg.sender_id !== user.id) {
+              playMessageSound();
             }
             fetchConversations();
           }

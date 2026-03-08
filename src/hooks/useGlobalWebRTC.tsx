@@ -1,6 +1,7 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { CallWindow } from '@/components/social/CallWindow';
+import { playIncomingCallSound, playMessageSound } from '@/lib/notification-sound';
 import type { CallStatus, CallType } from '@/hooks/useWebRTC';
 
 interface WebRTCContextType {
@@ -33,6 +34,37 @@ export function useGlobalWebRTC() {
 
 export function WebRTCProvider({ children }: { children: ReactNode }) {
   const webrtc = useWebRTC();
+  const prevStatus = useRef<CallStatus>('idle');
+  const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Play incoming call sound when status changes to ringing + incoming
+  useEffect(() => {
+    const { status, isIncoming } = webrtc.callState;
+
+    if (status === 'ringing' && isIncoming && prevStatus.current !== 'ringing') {
+      // Play immediately and repeat every 3s
+      playIncomingCallSound();
+      ringIntervalRef.current = setInterval(() => {
+        playIncomingCallSound();
+      }, 3000);
+    }
+
+    if (prevStatus.current === 'ringing' && status !== 'ringing') {
+      if (ringIntervalRef.current) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+    }
+
+    prevStatus.current = status;
+
+    return () => {
+      if (ringIntervalRef.current) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+    };
+  }, [webrtc.callState.status, webrtc.callState.isIncoming]);
 
   return (
     <WebRTCContext.Provider value={webrtc}>
@@ -56,3 +88,6 @@ export function WebRTCProvider({ children }: { children: ReactNode }) {
     </WebRTCContext.Provider>
   );
 }
+
+// Re-export the message sound for use in chat hooks
+export { playMessageSound } from '@/lib/notification-sound';
