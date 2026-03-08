@@ -121,11 +121,11 @@ export function CallWindow({
       // Attach remote stream to remote video (main view)
       if (remoteVideoRef.current) {
         const remote = remoteStream.current;
-        const localTrackIds = new Set(localStream.current?.getTracks().map((track) => track.id) ?? []);
+        const localTracks = localStream.current?.getTracks() ?? [];
         const remoteDisplayStream = remoteDisplayStreamRef.current;
 
         const remoteOnlyTracks = (remote?.getTracks() ?? []).filter(
-          (track) => track.readyState === 'live' && !localTrackIds.has(track.id)
+          (track) => track.readyState === 'live' && !localTracks.some((localTrack) => localTrack === track)
         );
 
         remoteDisplayStream.getTracks().forEach((track) => {

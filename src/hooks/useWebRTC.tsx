@@ -329,15 +329,15 @@ export function useWebRTC() {
       const receiverRemoteStream = new MediaStream();
       remoteStream.current = receiverRemoteStream;
 
-      const getLocalTrackIds = () => new Set(localStream.current?.getTracks().map((track) => track.id) ?? []);
+      const getLocalTracks = () => localStream.current?.getTracks() ?? [];
 
       const syncRemoteTracks = (tracks: MediaStreamTrack[]) => {
-        const localTrackIds = getLocalTrackIds();
+        const localTracks = getLocalTracks();
         const incomingTracks = tracks
           .filter((track): track is MediaStreamTrack => Boolean(track) && track.readyState === 'live')
-          .filter((track) => !localTrackIds.has(track.id));
+          .filter((track) => !localTracks.some((localTrack) => localTrack === track));
 
-        if (incomingTracks.length === 0) return;
+        
 
         receiverRemoteStream.getTracks().forEach((track) => {
           if (!incomingTracks.some((incoming) => incoming.id === track.id)) {
@@ -636,7 +636,7 @@ export function useWebRTC() {
             stream.getTracks().forEach((track) => {
               const alreadySending = peerConnection.current
                 ?.getSenders()
-                .some((sender) => sender.track?.id === track.id);
+                .some((sender) => sender.track === track);
 
               if (!alreadySending) {
                 peerConnection.current?.addTrack(track, stream);
