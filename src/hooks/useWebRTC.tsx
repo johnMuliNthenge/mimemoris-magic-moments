@@ -455,6 +455,10 @@ export function useWebRTC() {
               await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
             }
             pendingCandidates.current = [];
+
+            setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
+            markCallConnected();
+            startDurationTimer();
           } catch (error) {
             console.error('[WebRTC] Error setting answer:', error);
           }
