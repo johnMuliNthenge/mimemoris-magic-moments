@@ -24,6 +24,7 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { cn } from '@/lib/utils';
 import { FloatingHelpButton } from '@/components/layout/FloatingHelpButton';
 import { OfflineBanner } from '@/components/layout/OfflineBanner';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -132,6 +133,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Right Actions - Desktop */}
           <div className="hidden md:flex items-center gap-1">
+            <NotificationBell />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl">
@@ -156,6 +158,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Mobile: theme + logout in header */}
           <div className="flex md:hidden items-center gap-1">
+            <NotificationBell />
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-xl h-9 w-9">
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>

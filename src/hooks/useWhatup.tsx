@@ -24,10 +24,12 @@ export interface WhatupComment {
   user_id: string;
   content: string;
   created_at: string;
+  reply_to_id: string | null;
   user_profile?: {
     full_name: string | null;
     avatar_url: string | null;
   };
+  replies?: WhatupComment[];
 }
 
 export function useWhatup() {
@@ -122,22 +124,40 @@ export function useWhatup() {
       .select('user_id, full_name, avatar_url')
       .in('user_id', userIds);
 
-    return comments.map(comment => ({
+    const enrichedComments: WhatupComment[] = comments.map(comment => ({
       ...comment,
+      reply_to_id: (comment as any).reply_to_id || null,
       user_profile: profiles?.find(p => p.user_id === comment.user_id)
         ? { full_name: profiles.find(p => p.user_id === comment.user_id)!.full_name, avatar_url: profiles.find(p => p.user_id === comment.user_id)!.avatar_url }
         : undefined,
     }));
+
+    // Build threaded structure: top-level comments with nested replies
+    const topLevel = enrichedComments.filter(c => !c.reply_to_id);
+    const replyMap = new Map<string, WhatupComment[]>();
+    enrichedComments.filter(c => c.reply_to_id).forEach(reply => {
+      const existing = replyMap.get(reply.reply_to_id!) || [];
+      existing.push(reply);
+      replyMap.set(reply.reply_to_id!, existing);
+    });
+
+    return topLevel.map(comment => ({
+      ...comment,
+      replies: replyMap.get(comment.id) || [],
+    }));
   };
 
-  const addComment = async (postId: string, content: string) => {
+  const addComment = async (postId: string, content: string, replyToId?: string) => {
     if (!user) return { error: 'Not authenticated' };
 
-    const { error } = await supabase.from('whatup_comments').insert({
+    const insertData: any = {
       post_id: postId,
       user_id: user.id,
       content,
-    });
+    };
+    if (replyToId) insertData.reply_to_id = replyToId;
+
+    const { error } = await supabase.from('whatup_comments').insert(insertData);
 
     if (!error) {
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p));
@@ -146,7 +166,6 @@ export function useWhatup() {
       const mentions = content.match(/@(\S+)/g);
       if (mentions) {
         const usernames = mentions.map(m => m.slice(1));
-        // Look up users by name
         const { data: mentionedUsers } = await supabase
           .from('profiles')
           .select('user_id, full_name')
@@ -158,7 +177,7 @@ export function useWhatup() {
             .map(u => ({
               user_id: u.user_id,
               from_user_id: user.id,
-              type: 'whatup_mention',
+              type: 'trending_mention',
               reference_id: postId,
               content: `tagged you in a Trending comment`,
             }));

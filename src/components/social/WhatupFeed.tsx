@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import {
-  Heart, MessageCircle, Share2, Loader2, Send, Video, X, Upload
+  Heart, MessageCircle, Share2, Loader2, Send, Video, X, Upload, Reply, CornerDownRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { useWhatup } from '@/hooks/useWhatup';
+import { useWhatup, WhatupComment } from '@/hooks/useWhatup';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,13 +38,13 @@ export function WhatupFeed() {
 
   // Comments state
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<WhatupComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
 
   // @mention state
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionResults, setMentionResults] = useState<any[]>([]);
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -125,6 +125,7 @@ export function WhatupFeed() {
 
   const openComments = async (postId: string) => {
     setSelectedPost(postId);
+    setReplyingTo(null);
     setLoadingComments(true);
     const fetched = await getComments(postId);
     setComments(fetched);
@@ -134,14 +135,12 @@ export function WhatupFeed() {
   const handleCommentChange = async (value: string) => {
     setNewComment(value);
 
-    // Detect @mention
     const cursorPos = commentInputRef.current?.selectionStart || value.length;
     const textBeforeCursor = value.slice(0, cursorPos);
     const mentionMatch = textBeforeCursor.match(/@(\S*)$/);
 
     if (mentionMatch) {
       const query = mentionMatch[1];
-      setMentionQuery(query);
       if (query.length >= 1) {
         const results = await searchUsers(query);
         setMentionResults(results);
@@ -150,7 +149,6 @@ export function WhatupFeed() {
         setShowMentionDropdown(false);
       }
     } else {
-      setMentionQuery(null);
       setShowMentionDropdown(false);
     }
   };
@@ -163,7 +161,6 @@ export function WhatupFeed() {
     const updated = `${beforeMention}@${userName} ${textAfterCursor}`;
     setNewComment(updated);
     setShowMentionDropdown(false);
-    setMentionQuery(null);
     commentInputRef.current?.focus();
   };
 
@@ -174,11 +171,18 @@ export function WhatupFeed() {
     if (!validation.isValid) return;
 
     setSubmittingComment(true);
-    await addComment(selectedPost, validation.sanitized);
+    await addComment(selectedPost, validation.sanitized, replyingTo?.id);
     const updated = await getComments(selectedPost);
     setComments(updated);
     setNewComment('');
+    setReplyingTo(null);
     setSubmittingComment(false);
+  };
+
+  const handleReply = (comment: WhatupComment) => {
+    setReplyingTo({ id: comment.id, name: comment.user_profile?.full_name || 'Anonymous' });
+    setNewComment(`@${comment.user_profile?.full_name || 'Anonymous'} `);
+    commentInputRef.current?.focus();
   };
 
   const handleShare = async (post: any) => {
@@ -200,7 +204,6 @@ export function WhatupFeed() {
     }
   };
 
-  // Render comment content with highlighted @mentions
   const renderCommentContent = (content: string) => {
     const parts = content.split(/(@\S+)/g);
     return parts.map((part, i) =>
@@ -211,6 +214,36 @@ export function WhatupFeed() {
       )
     );
   };
+
+  const renderComment = (comment: WhatupComment, isReply = false) => (
+    <div key={comment.id} className={cn("flex gap-3", isReply && "ml-8")}>
+      {isReply && <CornerDownRight className="w-4 h-4 text-muted-foreground shrink-0 mt-3" />}
+      <Avatar className={cn(isReply ? "w-6 h-6" : "w-8 h-8")}>
+        <AvatarImage src={comment.user_profile?.avatar_url || undefined} />
+        <AvatarFallback className="text-xs">{comment.user_profile?.full_name?.[0] || 'U'}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <div className="bg-muted rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-medium text-sm">{comment.user_profile?.full_name || 'Anonymous'}</span>
+            <span className="text-xs text-muted-foreground">{format(new Date(comment.created_at), 'MMM d, HH:mm')}</span>
+          </div>
+          <p className="text-sm">{renderCommentContent(comment.content)}</p>
+        </div>
+        {!isReply && user && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs text-muted-foreground gap-1 mt-0.5"
+            onClick={() => handleReply(comment)}
+          >
+            <Reply className="w-3 h-3" />
+            Reply
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -253,11 +286,7 @@ export function WhatupFeed() {
               ) : (
                 <div className="space-y-3">
                   <div className="relative rounded-lg overflow-hidden bg-muted">
-                    <Button
-                      variant="ghost" size="icon"
-                      className="absolute top-2 right-2 z-10 bg-background/80"
-                      onClick={clearVideo}
-                    >
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 z-10 bg-background/80" onClick={clearVideo}>
                       <X className="w-4 h-4" />
                     </Button>
                     <Badge variant="secondary" className="absolute top-2 left-2 z-10">
@@ -352,7 +381,7 @@ export function WhatupFeed() {
       </div>
 
       {/* Comments Dialog */}
-      <Dialog open={!!selectedPost} onOpenChange={() => { setSelectedPost(null); setShowMentionDropdown(false); }}>
+      <Dialog open={!!selectedPost} onOpenChange={() => { setSelectedPost(null); setShowMentionDropdown(false); setReplyingTo(null); }}>
         <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Comments</DialogTitle>
@@ -367,20 +396,15 @@ export function WhatupFeed() {
                 <p className="text-sm">Be the first to comment!</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {comments.map(comment => (
-                  <div key={comment.id} className="flex gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={comment.user_profile?.avatar_url || undefined} />
-                      <AvatarFallback className="text-xs">{comment.user_profile?.full_name?.[0] || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 bg-muted rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{comment.user_profile?.full_name || 'Anonymous'}</span>
-                        <span className="text-xs text-muted-foreground">{format(new Date(comment.created_at), 'MMM d, HH:mm')}</span>
+                  <div key={comment.id} className="space-y-2">
+                    {renderComment(comment)}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="space-y-2">
+                        {comment.replies.map(reply => renderComment(reply, true))}
                       </div>
-                      <p className="text-sm">{renderCommentContent(comment.content)}</p>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -389,6 +413,17 @@ export function WhatupFeed() {
 
           {user && (
             <div className="relative pt-4 border-t border-border">
+              {/* Reply indicator */}
+              {replyingTo && (
+                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                  <Reply className="w-3 h-3" />
+                  <span>Replying to <span className="font-medium text-foreground">{replyingTo.name}</span></span>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-auto" onClick={() => { setReplyingTo(null); setNewComment(''); }}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+
               {/* @mention dropdown */}
               {showMentionDropdown && (
                 <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto">
@@ -410,7 +445,7 @@ export function WhatupFeed() {
               <div className="flex gap-2">
                 <Input
                   ref={commentInputRef}
-                  placeholder="Write a comment... Use @name to tag"
+                  placeholder={replyingTo ? `Reply to ${replyingTo.name}...` : "Write a comment... Use @name to tag"}
                   value={newComment}
                   onChange={e => handleCommentChange(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !showMentionDropdown) handleAddComment(); }}
