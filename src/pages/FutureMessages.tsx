@@ -217,7 +217,7 @@ export default function FutureMessages() {
                       </Button>
                       <Button type="submit" className="flex-1 gradient-warm text-primary-foreground" disabled={saving}>
                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {t('future_msg_send')}
+                        {editingId ? t('save') : t('future_msg_send')}
                       </Button>
                     </div>
                   </form>
