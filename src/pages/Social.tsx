@@ -76,10 +76,14 @@ export default function SocialPage() {
         </motion.div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="feed" className="gap-2">
               <Globe className="w-4 h-4" />
               <span className="hidden sm:inline">Feed</span>
+            </TabsTrigger>
+            <TabsTrigger value="whatup" className="gap-2">
+              <Video className="w-4 h-4" />
+              <span className="hidden sm:inline">Whatup</span>
             </TabsTrigger>
             <TabsTrigger value="friends" className="gap-2 relative">
               <Users className="w-4 h-4" />
