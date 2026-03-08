@@ -63,42 +63,42 @@ export default function AdminDashboard() {
     try {
       const startStr = format(startDate, 'yyyy-MM-dd');
       const endStr = format(endDate, 'yyyy-MM-dd');
+      const rangeDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const prevStart = format(subDays(startDate, rangeDays), 'yyyy-MM-dd');
+      const prevEnd = format(subDays(startDate, 1), 'yyyy-MM-dd');
       
-      // Fetch users created in date range
-      const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', startStr)
-        .lte('created_at', endStr + 'T23:59:59');
+      // Current period
+      const [{ count: usersCount }, { count: memoriesCount }, { data: subscriptions }] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true })
+          .gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+        supabase.from('memories').select('*', { count: 'exact', head: true })
+          .gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+        supabase.from('user_subscriptions').select('*, plan:subscription_plans(price_monthly)')
+          .eq('status', 'active').gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+      ]);
 
-      // Fetch memories in date range
-      const { count: memoriesCount } = await supabase
-        .from('memories')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', startStr)
-        .lte('created_at', endStr + 'T23:59:59');
+      // Previous period
+      const [{ count: prevUsersCount }, { count: prevMemoriesCount }, { data: prevSubs }] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true })
+          .gte('created_at', prevStart).lte('created_at', prevEnd + 'T23:59:59'),
+        supabase.from('memories').select('*', { count: 'exact', head: true })
+          .gte('created_at', prevStart).lte('created_at', prevEnd + 'T23:59:59'),
+        supabase.from('user_subscriptions').select('*, plan:subscription_plans(price_monthly)')
+          .eq('status', 'active').gte('created_at', prevStart).lte('created_at', prevEnd + 'T23:59:59'),
+      ]);
 
-      // Fetch active subscriptions with plan info in date range
-      const { data: subscriptions } = await supabase
-        .from('user_subscriptions')
-        .select(`
-          *,
-          plan:subscription_plans(price_monthly)
-        `)
-        .eq('status', 'active')
-        .gte('created_at', startStr)
-        .lte('created_at', endStr + 'T23:59:59');
-
-      const activeCount = subscriptions?.length || 0;
-      const revenue = subscriptions?.reduce((sum, sub) => {
-        return sum + (sub.plan?.price_monthly || 0);
-      }, 0) || 0;
+      const revenue = subscriptions?.reduce((sum, sub) => sum + ((sub.plan as any)?.price_monthly || 0), 0) || 0;
+      const prevRevenue = prevSubs?.reduce((sum, sub) => sum + ((sub.plan as any)?.price_monthly || 0), 0) || 0;
 
       setStats({
         totalUsers: usersCount || 0,
         totalMemories: memoriesCount || 0,
-        activeSubscriptions: activeCount,
+        activeSubscriptions: subscriptions?.length || 0,
         monthlyRevenue: revenue,
+        prevUsers: prevUsersCount || 0,
+        prevMemories: prevMemoriesCount || 0,
+        prevSubscriptions: prevSubs?.length || 0,
+        prevRevenue: prevRevenue,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
