@@ -32,6 +32,7 @@ import UserProfile from "./pages/UserProfile";
 import JoinGroup from "./pages/JoinGroup";
 import Analytics from "./pages/Analytics";
 import FutureMessages from "./pages/FutureMessages";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
