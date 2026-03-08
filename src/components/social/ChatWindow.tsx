@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, Edit2, Trash2, X, Reply, Check, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { useChat } from '@/hooks/useChat';
+import { useWebRTC } from '@/hooks/useWebRTC';
+import { CallWindow } from '@/components/social/CallWindow';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
