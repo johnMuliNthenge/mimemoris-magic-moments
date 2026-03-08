@@ -184,7 +184,23 @@ export function useGroupCall(groupId: string) {
     };
 
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+      const state = pc.iceConnectionState;
+      // Map ICE states to simpler connection states
+      const mapped: Participant['connectionState'] =
+        state === 'connected' || state === 'completed' ? 'connected' :
+        state === 'checking' || state === 'new' ? 'connecting' :
+        state === 'disconnected' ? 'reconnecting' : 'disconnected';
+
+      setParticipants(prev => {
+        const next = new Map(prev);
+        const existing = next.get(remoteUserId);
+        if (existing) {
+          next.set(remoteUserId, { ...existing, connectionState: mapped });
+        }
+        return next;
+      });
+
+      if (state === 'disconnected' || state === 'failed') {
         pc.restartIce();
       }
     };
