@@ -273,8 +273,6 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
               {t('participant_limit_warning')}
             </Badge>
           )}
-            {participantList.length + 1}
-          </Badge>
           {isHost && (
             <Sheet>
               <SheetTrigger asChild>
