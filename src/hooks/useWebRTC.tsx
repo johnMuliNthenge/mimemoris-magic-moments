@@ -453,7 +453,7 @@ export function useWebRTC() {
         });
 
         channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
-          if (!peerConnection.current || !payload?.answer) return;
+          if (!peerConnection.current || !payload?.answer || payload?.from !== remoteUserId) return;
 
           try {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.answer));
@@ -471,9 +471,9 @@ export function useWebRTC() {
           }
         });
 
-        channel.on('broadcast', { event: 'ready-for-offer' }, async () => {
+        channel.on('broadcast', { event: 'ready-for-offer' }, async ({ payload }) => {
           const pc = peerConnection.current;
-          if (!pc || !user.id) return;
+          if (!pc || !user.id || payload?.from !== remoteUserId) return;
 
           try {
             if (!pc.localDescription) {
@@ -493,7 +493,7 @@ export function useWebRTC() {
         });
 
         channel.on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-          if (!payload?.candidate || payload.from === user.id || !peerConnection.current) return;
+          if (!payload?.candidate || payload.from !== remoteUserId || !peerConnection.current) return;
 
           try {
             if (peerConnection.current.remoteDescription) {
@@ -506,11 +506,13 @@ export function useWebRTC() {
           }
         });
 
-        channel.on('broadcast', { event: 'end-call' }, () => {
+        channel.on('broadcast', { event: 'end-call' }, ({ payload }) => {
+          if (payload?.from !== remoteUserId) return;
           cleanup(getRemoteEndedStatus());
         });
 
-        channel.on('broadcast', { event: 'reject-call' }, () => {
+        channel.on('broadcast', { event: 'reject-call' }, ({ payload }) => {
+          if (payload?.from !== remoteUserId) return;
           cleanup('rejected');
         });
 
