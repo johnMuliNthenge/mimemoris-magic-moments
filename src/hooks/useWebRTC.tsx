@@ -365,9 +365,11 @@ export function useWebRTC() {
           if (disconnectTimeout.current) clearTimeout(disconnectTimeout.current);
 
           if (pc.connectionState === 'failed') {
-            void pc.restartIce().catch((error) => {
+            try {
+              pc.restartIce();
+            } catch (error) {
               console.error('[WebRTC] ICE restart on failed state error:', error);
-            });
+            }
           }
 
           disconnectTimeout.current = setTimeout(() => {
