@@ -197,7 +197,7 @@ export function useWebRTC() {
 
   const markCallConnected = useCallback(() => {
     const currentLog = activeCallLog.current;
-    if (!currentLog || currentLog.finalized) return;
+    if (!currentLog || currentLog.finalized || currentLog.connectedAt) return;
 
     currentLog.connectedAt = Date.now();
 
@@ -403,8 +403,15 @@ export function useWebRTC() {
       try {
         await waitForChannelSubscription(notifyChannel, 'Incoming notification channel');
         await sendSignal(notifyChannel, event, payload);
+
+        // Retry once to reduce missed incoming-call notifications on slower connections
+        setTimeout(() => {
+          void sendSignal(notifyChannel, event, payload).catch((error) => {
+            console.warn('[WebRTC] Incoming notification retry failed:', error);
+          });
+        }, 600);
       } finally {
-        setTimeout(() => supabase.removeChannel(notifyChannel), 500);
+        setTimeout(() => supabase.removeChannel(notifyChannel), 3000);
       }
     },
     [sendSignal, waitForChannelSubscription]
@@ -448,6 +455,10 @@ export function useWebRTC() {
               await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
             }
             pendingCandidates.current = [];
+
+            setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
+            markCallConnected();
+            startDurationTimer();
           } catch (error) {
             console.error('[WebRTC] Error setting answer:', error);
           }
@@ -593,6 +604,10 @@ export function useWebRTC() {
             answer: peerConnection.current.localDescription,
             from: user.id,
           });
+
+          setCallState((prev) => ({ ...prev, status: 'connected', isIncoming: false }));
+          markCallConnected();
+          startDurationTimer();
           console.log('[WebRTC] Answer sent');
         } catch (error) {
           console.error('[WebRTC] Error handling offer:', error);
@@ -661,7 +676,7 @@ export function useWebRTC() {
       } catch (error) {
         console.error('[WebRTC] Failed to send reject:', error);
       } finally {
-        setTimeout(() => supabase.removeChannel(rejectChannel), 500);
+        setTimeout(() => supabase.removeChannel(rejectChannel), 2000);
       }
     };
 
