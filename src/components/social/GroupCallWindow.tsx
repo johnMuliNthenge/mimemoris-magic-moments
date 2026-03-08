@@ -120,6 +120,7 @@ function ParticipantsList({ participantList, kickParticipant }: {
 }
 
 export function GroupCallWindow({ groupId, groupName, onClose, callHook }: GroupCallWindowProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const {
     status,

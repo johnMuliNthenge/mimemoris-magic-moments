@@ -319,7 +319,7 @@ function RecentActivityFeed() {
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : activities.length === 0 ? (
-            <p className="text-center text-muted-foreground py-6">No recent activity</p>
+            <p className="text-center text-muted-foreground py-6">{t('no_recent_activity')}</p>
           ) : (
             <div className="space-y-4">
               {activities.map((activity, index) => (
