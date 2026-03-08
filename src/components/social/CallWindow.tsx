@@ -120,11 +120,16 @@ export function CallWindow({
       // Attach remote stream to remote video (main view)
       if (remoteVideoRef.current) {
         const remote = remoteStream.current;
+        const localTrackIds = new Set(localStream.current?.getTracks().map((track) => track.id) ?? []);
 
-        const hasVideoTrack = Boolean(remote?.getVideoTracks().length);
-        const hasAnyTrack = Boolean(remote?.getTracks().length);
+        const remoteOnlyTracks = (remote?.getTracks() ?? []).filter(
+          (track) => track.readyState === 'live' && !localTrackIds.has(track.id)
+        );
 
-        // For video calls, only render main video when an actual remote video track exists
+        const hasVideoTrack = remoteOnlyTracks.some((track) => track.kind === 'video');
+        const hasAnyTrack = remoteOnlyTracks.length > 0;
+
+        // For video calls, only render main video when an actual non-local remote video track exists
         const canAttachToMainVideo = type === 'video' ? hasVideoTrack : hasAnyTrack;
 
         if (remote && canAttachToMainVideo) {
