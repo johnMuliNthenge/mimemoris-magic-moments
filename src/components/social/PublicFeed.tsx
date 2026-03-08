@@ -192,11 +192,26 @@ export function PublicFeed() {
     await toggleLike(memoryId);
   };
 
-  const handleReport = (memory: any) => {
-    toast({
-      title: 'Report submitted',
-      description: 'Thank you for reporting. Our team will review this content.',
-    });
+  const handleReport = async (memory: any) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from('reported_content').insert({
+        reporter_id: user.id,
+        memory_id: memory.id,
+        reason: 'inappropriate',
+      });
+      if (error && error.code === '23505') {
+        toast({ title: t('report_submitted'), description: 'You have already reported this content.' });
+        return;
+      }
+      if (error) throw error;
+      toast({
+        title: t('report_submitted'),
+        description: t('report_submitted_desc'),
+      });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
   };
 
   if (loading) {
@@ -231,9 +246,9 @@ export function PublicFeed() {
         {memories.length === 0 ? (
           <div className="text-center py-16">
             <Globe className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-            <h3 className="text-xl font-semibold mb-2">No Public Memories</h3>
+            <h3 className="text-xl font-semibold mb-2">{t('no_public_memories')}</h3>
             <p className="text-muted-foreground">
-              Be the first to share a memory with the community!
+              {t('be_first_to_share')}
             </p>
           </div>
         ) : (
@@ -274,7 +289,7 @@ export function PublicFeed() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleReport(memory)} className="gap-2 text-destructive">
                             <Flag className="w-4 h-4" />
-                            Report
+                            {t('report')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -380,7 +395,7 @@ export function PublicFeed() {
           <div className="flex justify-center pt-4">
             <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="gap-2">
               {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
-              Load more
+              {t('load_more')}
             </Button>
           </div>
         )}
@@ -390,7 +405,7 @@ export function PublicFeed() {
       <Dialog open={!!selectedMemory} onOpenChange={() => setSelectedMemory(null)}>
         <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Comments</DialogTitle>
+            <DialogTitle>{t('comments')}</DialogTitle>
           </DialogHeader>
           
           <ScrollArea className="flex-1 pr-4">
@@ -400,8 +415,8 @@ export function PublicFeed() {
               </div>
             ) : comments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No comments yet</p>
-                <p className="text-sm">Be the first to comment!</p>
+              <p>{t('no_comments_yet')}</p>
+                <p className="text-sm">{t('be_first_comment')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -433,7 +448,7 @@ export function PublicFeed() {
           {user && (
             <div className="flex gap-2 pt-4 border-t border-border">
               <Input
-                placeholder="Write a comment..."
+                placeholder={t('write_comment')}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}

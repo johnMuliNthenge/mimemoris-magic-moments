@@ -160,7 +160,7 @@ export default function AdminDashboard() {
           <div>
             <h1 className="font-display text-3xl font-bold">{t('admin_dashboard')}</h1>
             <p className="text-muted-foreground mt-1">
-              Manage users, subscriptions, and monitor app analytics
+              {t('admin_desc')}
             </p>
           </div>
           <DateRangeFilter onDateChange={handleDateChange} />
@@ -215,7 +215,7 @@ export default function AdminDashboard() {
               </TabsTrigger>
               <TabsTrigger value="payments" className="gap-2">
                 <Settings className="w-4 h-4" />
-                Payments
+                {t('payments')}
               </TabsTrigger>
             </TabsList>
 
@@ -240,6 +240,7 @@ export default function AdminDashboard() {
 }
 
 function RecentActivityFeed() {
+  const { t } = useTranslation();
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -309,9 +310,9 @@ function RecentActivityFeed() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
-            Recent Activity
+            {t('recent_activity')}
           </CardTitle>
-          <CardDescription>Latest actions across the platform</CardDescription>
+          <CardDescription>{t('latest_actions')}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -319,7 +320,7 @@ function RecentActivityFeed() {
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : activities.length === 0 ? (
-            <p className="text-center text-muted-foreground py-6">No recent activity</p>
+            <p className="text-center text-muted-foreground py-6">{t('no_recent_activity')}</p>
           ) : (
             <div className="space-y-4">
               {activities.map((activity, index) => (

@@ -112,7 +112,7 @@ export default function Dashboard() {
 
   const stats = [
     { 
-      label: 'Total Memories', 
+      label: t('stat_total_memories'), 
       value: memories.length, 
       icon: BookHeart, 
       color: 'text-primary',
@@ -121,7 +121,7 @@ export default function Dashboard() {
       clickable: true
     },
     { 
-      label: 'Today', 
+      label: t('stat_today'), 
       value: subscription?.memories_used_today || 0, 
       icon: Calendar, 
       color: 'text-accent',
@@ -130,7 +130,7 @@ export default function Dashboard() {
       clickable: true
     },
     { 
-      label: 'Collaborations', 
+      label: t('stat_collaborations'), 
       value: collaborationsCount, 
       icon: Users, 
       color: 'text-collab',
@@ -139,8 +139,8 @@ export default function Dashboard() {
       clickable: true
     },
     { 
-      label: 'Memory Streak', 
-      value: `${calculateStreak()} days`, 
+      label: t('stat_streak'), 
+      value: t('stat_days', { count: calculateStreak() }), 
       icon: TrendingUp, 
       color: 'text-success',
       bgColor: 'bg-success/10',
@@ -171,10 +171,10 @@ export default function Dashboard() {
         >
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">
-              Welcome back! 👋
+              {t('welcome_back')}
             </h1>
             <p className="text-muted-foreground mt-1">
-              Ready to capture today's memories?
+              {t('ready_to_capture')}
             </p>
           </div>
           <div className="flex gap-3">
@@ -228,7 +228,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   {stat.clickable && (
-                    <p className="text-xs text-muted-foreground mt-2">Click to view →</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t('click_to_view')}</p>
                   )}
                 </CardContent>
               </Card>
@@ -250,9 +250,9 @@ export default function Dashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">Daily Memory Usage</CardTitle>
+                    <CardTitle className="text-lg">{t('daily_memory_usage')}</CardTitle>
                     <CardDescription>
-                      {subscription.plan.name} - {subscription.memories_used_today}/{subscription.plan.daily_memory_limit} memories used today
+                      {t('daily_usage_desc', { plan: subscription.plan.name, used: subscription.memories_used_today, limit: subscription.plan.daily_memory_limit })}
                     </CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => navigate('/subscription')}>
@@ -290,19 +290,19 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-primary" />
-                  Recent Memories
+                  {t('recent_memories')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {recentMemories.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
-                    <p>No memories yet</p>
+                    <p>{t('no_memories_yet')}</p>
                     <Button 
                       variant="link" 
                       onClick={() => navigate('/memories/new')}
                       className="mt-2"
                     >
-                      Create your first memory
+                      {t('create_first_memory')}
                     </Button>
                   </div>
                 ) : (
@@ -315,7 +315,7 @@ export default function Dashboard() {
                       >
                         <div className="text-2xl">{memory.mood || '📝'}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{memory.title || 'Untitled Memory'}</p>
+                          <p className="font-medium truncate">{memory.title || t('untitled_memory')}</p>
                           <p className="text-sm text-muted-foreground">
                             {format(parseISO(memory.memory_date), 'MMM d, yyyy')}
                           </p>
@@ -330,7 +330,7 @@ export default function Dashboard() {
                       className="w-full"
                       onClick={() => navigate('/memories/list')}
                     >
-                      View all memories →
+                      {t('view_all_memories')}
                     </Button>
                   </>
                 )}
@@ -351,7 +351,7 @@ export default function Dashboard() {
                   {t('nav_collaborate')}
                 </CardTitle>
                 <CardDescription>
-                  Create shared memories with friends and family
+                  {t('collab_desc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -370,14 +370,14 @@ export default function Dashboard() {
                 </Button>
                 <div className="pt-4 border-t border-border">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-muted-foreground">Your collaborations</p>
+                    <p className="text-sm text-muted-foreground">{t('your_collaborations')}</p>
                     <Button 
                       variant="link" 
                       size="sm" 
                       className="h-auto p-0"
                       onClick={() => navigate('/collaborations')}
                     >
-                      View all →
+                      {t('view_all')}
                     </Button>
                   </div>
                   {collaborationsCount > 0 ? (
@@ -392,12 +392,12 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium">{collaborationsCount} collaboration{collaborationsCount !== 1 ? 's' : ''}</p>
-                        <p className="text-xs text-muted-foreground">Click to view details</p>
+                        <p className="text-xs text-muted-foreground">{t('click_to_view')}</p>
                       </div>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-3">
-                      No collaborations yet
+                      {t('no_collaborations_yet')}
                     </p>
                   )}
                 </div>

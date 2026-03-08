@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, UserMinus, X, Users, Wifi, WifiOff, Monitor, MonitorOff, Hand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -119,6 +120,7 @@ function ParticipantsList({ participantList, kickParticipant }: {
 }
 
 export function GroupCallWindow({ groupId, groupName, onClose, callHook }: GroupCallWindowProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const {
     status,
@@ -188,20 +190,20 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
 
         {activeCall ? (
           <div className="flex flex-col items-center gap-4">
-            <p className="text-muted-foreground text-center text-sm sm:text-base">A call is active in this group</p>
-            <Badge variant="outline" className="text-sm">{activeCall.call_type === 'video' ? 'Video' : 'Audio'} Call</Badge>
+            <p className="text-muted-foreground text-center text-sm sm:text-base">{t('call_active')}</p>
+            <Badge variant="outline" className="text-sm">{activeCall.call_type === 'video' ? t('video_call') : t('audio_call')}</Badge>
             <Button
               size="lg"
               className="gap-2 bg-green-600 hover:bg-green-700 w-full sm:w-auto"
               onClick={joinCall}
             >
               <Phone className="w-5 h-5" />
-              Join Call
+              {t('join_call')}
             </Button>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-            <p className="text-muted-foreground text-center text-sm sm:text-base">Start a call for group members to join</p>
+            <p className="text-muted-foreground text-center text-sm sm:text-base">{t('start_call_desc')}</p>
             <div className="flex gap-3 w-full">
               <Button
                 size="lg"
@@ -210,8 +212,8 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
                 onClick={() => startCall('audio')}
               >
                 <Phone className="w-5 h-5" />
-                <span className="hidden sm:inline">Audio Call</span>
-                <span className="sm:hidden">Audio</span>
+                <span className="hidden sm:inline">{t('audio_call')}</span>
+                <span className="sm:hidden">{t('audio_call')}</span>
               </Button>
               <Button
                 size="lg"
@@ -219,8 +221,8 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
                 onClick={() => startCall('video')}
               >
                 <Video className="w-5 h-5" />
-                <span className="hidden sm:inline">Video Call</span>
-                <span className="sm:hidden">Video</span>
+                <span className="hidden sm:inline">{t('video_call')}</span>
+                <span className="sm:hidden">{t('video_call')}</span>
               </Button>
             </div>
           </div>
@@ -239,7 +241,7 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
       >
         <div className="animate-pulse flex flex-col items-center gap-3">
           <Phone className="w-10 h-10 text-primary" />
-          <p className="text-lg">Joining call...</p>
+          <p className="text-lg">{t('joining_call')}</p>
         </div>
       </motion.div>
     );
@@ -266,12 +268,17 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
             <Users className="w-3 h-3" />
             {participantList.length + 1}
           </Badge>
+          {participantList.length + 1 > 6 && (
+            <Badge variant="destructive" className="text-[10px] sm:text-xs animate-pulse">
+              {t('participant_limit_warning')}
+            </Badge>
+          )}
           {isHost && (
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-1 h-8 px-2 sm:px-3">
                   <Users className="w-4 h-4" />
-                  <span className="hidden sm:inline">Manage</span>
+                  <span className="hidden sm:inline">{t('manage')}</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-72 sm:w-80 p-0">
