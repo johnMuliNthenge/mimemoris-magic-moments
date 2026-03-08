@@ -311,13 +311,23 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
           />
 
           {participantList.map(p => (
-            <VideoTile
-              key={p.user_id}
-              stream={p.stream}
-              label={p.full_name || 'User'}
-              avatarUrl={p.avatar_url}
-              connectionState={p.connectionState}
-            />
+            <div key={p.user_id} className="relative">
+              <VideoTile
+                stream={p.stream}
+                label={p.full_name || 'User'}
+                avatarUrl={p.avatar_url}
+                connectionState={p.connectionState}
+              />
+              {raisedHands.has(p.user_id) && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute top-2 left-2 bg-warning/90 rounded-full p-1.5 shadow-lg"
+                >
+                  <Hand className="w-4 h-4 text-warning-foreground" />
+                </motion.div>
+              )}
+            </div>
           ))}
         </div>
       </div>
