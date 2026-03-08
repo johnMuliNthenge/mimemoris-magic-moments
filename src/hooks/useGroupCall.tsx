@@ -11,6 +11,7 @@ interface Participant {
   avatar_url: string | null;
   stream: MediaStream | null;
   pc: RTCPeerConnection | null;
+  connectionState: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 }
 
 interface ActiveGroupCall {
@@ -183,7 +184,23 @@ export function useGroupCall(groupId: string) {
     };
 
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+      const state = pc.iceConnectionState;
+      // Map ICE states to simpler connection states
+      const mapped: Participant['connectionState'] =
+        state === 'connected' || state === 'completed' ? 'connected' :
+        state === 'checking' || state === 'new' ? 'connecting' :
+        state === 'disconnected' ? 'reconnecting' : 'disconnected';
+
+      setParticipants(prev => {
+        const next = new Map(prev);
+        const existing = next.get(remoteUserId);
+        if (existing) {
+          next.set(remoteUserId, { ...existing, connectionState: mapped });
+        }
+        return next;
+      });
+
+      if (state === 'disconnected' || state === 'failed') {
         pc.restartIce();
       }
     };
@@ -266,7 +283,7 @@ export function useGroupCall(groupId: string) {
     setParticipants(prev => {
       const next = new Map(prev);
       if (!next.has(userId)) {
-        next.set(userId, { user_id: userId, full_name: fullName, avatar_url: avatarUrl, stream: null, pc: null });
+        next.set(userId, { user_id: userId, full_name: fullName, avatar_url: avatarUrl, stream: null, pc: null, connectionState: 'connecting' });
       }
       return next;
     });

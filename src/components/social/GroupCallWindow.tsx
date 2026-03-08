@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, UserMinus, X, Users } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, UserMinus, X, Users, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -16,12 +16,13 @@ interface GroupCallWindowProps {
   callHook: ReturnType<typeof useGroupCall>;
 }
 
-function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
+function VideoTile({ stream, label, avatarUrl, isMuted, isLocal, connectionState }: {
   stream: MediaStream | null;
   label: string;
   avatarUrl?: string | null;
   isMuted?: boolean;
   isLocal?: boolean;
+  connectionState?: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasVideo = !!stream?.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
@@ -59,6 +60,29 @@ function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
         </Badge>
         {isMuted && <MicOff className="w-3 h-3 text-destructive" />}
       </div>
+      {/* Connection status indicator */}
+      {!isLocal && connectionState && connectionState !== 'connected' && (
+        <div className="absolute top-2 right-2">
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] gap-1 bg-background/80 backdrop-blur-sm",
+              connectionState === 'connecting' && "text-amber-500 border-amber-500/50",
+              connectionState === 'reconnecting' && "text-orange-500 border-orange-500/50 animate-pulse",
+              connectionState === 'disconnected' && "text-destructive border-destructive/50"
+            )}
+          >
+            {connectionState === 'connecting' && <><Wifi className="w-3 h-3" /> Connecting</>}
+            {connectionState === 'reconnecting' && <><Wifi className="w-3 h-3" /> Reconnecting</>}
+            {connectionState === 'disconnected' && <><WifiOff className="w-3 h-3" /> Lost</>}
+          </Badge>
+        </div>
+      )}
+      {!isLocal && connectionState === 'connected' && (
+        <div className="absolute top-2 right-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]" title="Connected" />
+        </div>
+      )}
     </div>
   );
 }
@@ -243,6 +267,7 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
                 stream={p.stream}
                 label={p.full_name || 'User'}
                 avatarUrl={p.avatar_url}
+                connectionState={p.connectionState}
               />
             ))}
           </div>
