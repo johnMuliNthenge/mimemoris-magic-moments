@@ -361,18 +361,21 @@ export function useWebRTC() {
           return;
         }
 
-        if (pc.connectionState === 'disconnected') {
+        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
           if (disconnectTimeout.current) clearTimeout(disconnectTimeout.current);
+
+          if (pc.connectionState === 'failed') {
+            void pc.restartIce().catch((error) => {
+              console.error('[WebRTC] ICE restart on failed state error:', error);
+            });
+          }
 
           disconnectTimeout.current = setTimeout(() => {
             if (peerConnection.current !== pc) return;
+            if (pc.connectionState === 'connected') return;
             cleanup('failed');
           }, DISCONNECT_GRACE_MS);
           return;
-        }
-
-        if (pc.connectionState === 'failed') {
-          cleanup('failed');
         }
       };
 
