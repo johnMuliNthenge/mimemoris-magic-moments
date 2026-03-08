@@ -6,13 +6,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { useGroupCall, GroupCallStatus } from '@/hooks/useGroupCall';
+import { useGroupCall } from '@/hooks/useGroupCall';
 import { useAuth } from '@/hooks/useAuth';
 
 interface GroupCallWindowProps {
   groupId: string;
   groupName: string;
   onClose: () => void;
+  callHook: ReturnType<typeof useGroupCall>;
 }
 
 function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
@@ -60,7 +61,7 @@ function VideoTile({ stream, label, avatarUrl, isMuted, isLocal }: {
   );
 }
 
-export function GroupCallWindow({ groupId, groupName, onClose }: GroupCallWindowProps) {
+export function GroupCallWindow({ groupId, groupName, onClose, callHook }: GroupCallWindowProps) {
   const { user } = useAuth();
   const {
     status,
@@ -76,7 +77,7 @@ export function GroupCallWindow({ groupId, groupName, onClose }: GroupCallWindow
     kickParticipant,
     toggleMute,
     toggleVideo,
-  } = useGroupCall(groupId);
+  } = callHook;
 
   const [showParticipants, setShowParticipants] = useState(false);
   const [elapsed, setElapsed] = useState(0);

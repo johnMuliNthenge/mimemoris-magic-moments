@@ -254,8 +254,8 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
   const [showCallWindow, setShowCallWindow] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const groupCallState = useGroupCall(groupId);
-  const activeCall = groupCallState.activeCall;
+  const groupCallHook = useGroupCall(groupId);
+  const { activeCall } = groupCallHook;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -655,6 +655,7 @@ export function GroupChat({ groupId, onBack }: GroupChatProps) {
           groupId={groupId}
           groupName={currentGroup.name}
           onClose={() => setShowCallWindow(false)}
+          callHook={groupCallHook}
         />
       )}
     </div>
