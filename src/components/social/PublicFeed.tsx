@@ -415,8 +415,8 @@ export function PublicFeed() {
               </div>
             ) : comments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No comments yet</p>
-                <p className="text-sm">Be the first to comment!</p>
+              <p>{t('no_comments_yet')}</p>
+                <p className="text-sm">{t('be_first_comment')}</p>
               </div>
             ) : (
               <div className="space-y-4">
