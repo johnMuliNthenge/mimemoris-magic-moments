@@ -280,7 +280,7 @@ export function GroupCallWindow({ groupId, groupName, onClose, callHook }: Group
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-1 h-8 px-2 sm:px-3">
                   <Users className="w-4 h-4" />
-                  <span className="hidden sm:inline">Manage</span>
+                  <span className="hidden sm:inline">{t('manage')}</span>
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-72 sm:w-80 p-0">
