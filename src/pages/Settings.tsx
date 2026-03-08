@@ -171,6 +171,11 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <AvatarUpload
+                currentUrl={avatarUrl}
+                fullName={fullName}
+                onUploaded={(url) => setAvatarUrl(url)}
+              />
               <div className="space-y-2">
                 <Label htmlFor="email">{t('email')}</Label>
                 <Input
