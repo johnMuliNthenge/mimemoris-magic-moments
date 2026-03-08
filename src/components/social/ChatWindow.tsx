@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import {
   Send,
@@ -9,6 +9,7 @@ import {
   X,
   Reply,
   Check,
+  CheckCheck,
   Phone,
   Video,
   PhoneIncoming,
@@ -164,6 +165,14 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
                 >
                   <span className="text-xs">{format(new Date(msg.created_at), 'HH:mm')}</span>
                   {msg.edited_at && <span className="text-xs italic">(edited)</span>}
+                  {/* Read receipt ticks for own messages */}
+                  {isOwn && (
+                    msg.is_read ? (
+                      <CheckCheck className="w-3.5 h-3.5 ml-1 text-blue-300" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5 ml-1" />
+                    )
+                  )}
                 </div>
               </>
             )}
@@ -200,7 +209,7 @@ function MessageBubble({ msg, isOwn, canEdit, onEdit, onDelete, onReply, index }
 export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvatar, onBack }: ChatWindowProps) {
   const { user } = useAuth();
   const [showCallHistory, setShowCallHistory] = useState(false);
-  const { messages, sendMessage, editMessage, deleteMessage, canEditMessage, loading } = useChat(
+  const { messages, sendMessage, editMessage, deleteMessage, canEditMessage, loading, isPartnerTyping, sendTypingIndicator } = useChat(
     selectedUserId || undefined
   );
   const { history: callHistory, loading: callHistoryLoading, refetch: refetchCallHistory } = useCallHistory(
@@ -216,6 +225,7 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
   const [replyTo, setReplyTo] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previousCallStatusRef = useRef<CallStatus>('idle');
+  const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -227,6 +237,15 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
     }
     previousCallStatusRef.current = callState.status;
   }, [callState.status, refetchCallHistory]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    // Debounced typing indicator
+    if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+    typingDebounceRef.current = setTimeout(() => {
+      sendTypingIndicator();
+    }, 300);
+  }, [sendTypingIndicator]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || !selectedUserId) return;
@@ -276,7 +295,17 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
         </Avatar>
         <div className="flex-1">
           <p className="font-medium">{selectedUserName || 'Unknown User'}</p>
-          <p className="text-xs text-muted-foreground">Online</p>
+          {isPartnerTyping ? (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs text-primary font-medium"
+            >
+              typing...
+            </motion.p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Online</p>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -392,6 +421,22 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
               />
             ))
           )}
+          {/* Typing indicator in message area */}
+          {isPartnerTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
+            >
+              <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            </motion.div>
+          )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
@@ -415,7 +460,7 @@ export function ChatWindow({ selectedUserId, selectedUserName, selectedUserAvata
           <Input
             placeholder="Type a message..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             disabled={sending}
           />

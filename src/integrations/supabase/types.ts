@@ -755,6 +755,45 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          comments: boolean
+          created_at: string
+          friend_requests: boolean
+          id: string
+          likes: boolean
+          mentions: boolean
+          messages: boolean
+          trending: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comments?: boolean
+          created_at?: string
+          friend_requests?: boolean
+          id?: string
+          likes?: boolean
+          mentions?: boolean
+          messages?: boolean
+          trending?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comments?: boolean
+          created_at?: string
+          friend_requests?: boolean
+          id?: string
+          likes?: boolean
+          mentions?: boolean
+          messages?: boolean
+          trending?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           content: string

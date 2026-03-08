@@ -41,9 +41,23 @@ export function NotificationBell() {
         return '💭';
       case 'follow':
         return '👤';
+      case 'trending_like':
+        return '❤️';
+      case 'trending_comment':
+        return '💬';
       default:
         return '🔔';
     }
+  };
+
+  const getNotificationContent = (notification: any) => {
+    // Show just the action part, since the name is shown separately
+    const content = notification.content as string;
+    const fromName = notification.from_profile?.full_name;
+    if (fromName && content.startsWith(fromName)) {
+      return content.slice(fromName.length).trim();
+    }
+    return content;
   };
 
   return (
@@ -110,7 +124,7 @@ export function NotificationBell() {
                       <span className="font-medium">
                         {notification.from_profile?.full_name || 'Someone'}
                       </span>{' '}
-                      <span className="text-muted-foreground">{notification.content}</span>
+                      <span className="text-muted-foreground">{getNotificationContent(notification)}</span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {format(new Date(notification.created_at), 'MMM d, HH:mm')}
@@ -124,6 +138,19 @@ export function NotificationBell() {
             </div>
           )}
         </ScrollArea>
+
+        {notifications.length > 0 && (
+          <div className="border-t border-border px-4 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-primary"
+              onClick={() => { setOpen(false); navigate('/notifications'); }}
+            >
+              View all notifications
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

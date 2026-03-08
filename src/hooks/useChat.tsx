@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { playMessageSound } from '@/lib/notification-sound';
@@ -29,6 +29,9 @@ export function useChat(selectedUserId?: string) {
   const [conversations, setConversations] = useState<ChatUser[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -42,7 +45,43 @@ export function useChat(selectedUserId?: string) {
     if (user && selectedUserId) {
       fetchMessages(selectedUserId);
       markAsRead(selectedUserId);
+      setupTypingChannel(selectedUserId);
     }
+    return () => {
+      if (typingChannelRef.current) {
+        supabase.removeChannel(typingChannelRef.current);
+        typingChannelRef.current = null;
+      }
+    };
+  }, [user, selectedUserId]);
+
+  const setupTypingChannel = (partnerId: string) => {
+    if (!user) return;
+    if (typingChannelRef.current) {
+      supabase.removeChannel(typingChannelRef.current);
+    }
+
+    const channelName = [user.id, partnerId].sort().join('-');
+    const channel = supabase.channel(`typing:${channelName}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        if (payload.payload?.user_id === partnerId) {
+          setIsPartnerTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setIsPartnerTyping(false), 3000);
+        }
+      })
+      .subscribe();
+
+    typingChannelRef.current = channel;
+  };
+
+  const sendTypingIndicator = useCallback(() => {
+    if (!user || !selectedUserId || !typingChannelRef.current) return;
+    typingChannelRef.current.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { user_id: user.id },
+    });
   }, [user, selectedUserId]);
 
   const fetchConversations = async () => {
@@ -59,7 +98,6 @@ export function useChat(selectedUserId?: string) {
       return;
     }
 
-    // Group by conversation partner
     const conversationMap = new Map<string, { messages: Message[]; unread: number }>();
     
     allMessages.forEach(msg => {
@@ -77,7 +115,6 @@ export function useChat(selectedUserId?: string) {
       }
     });
 
-    // Fetch profile info for each partner
     const partnerIds = Array.from(conversationMap.keys());
     const { data: profiles } = await supabase
       .from('profiles')
@@ -110,7 +147,6 @@ export function useChat(selectedUserId?: string) {
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
-    // Fetch reply messages if any
     const messagesWithReplies = await Promise.all(
       (data || []).map(async (msg) => {
         if (msg.reply_to_id) {
@@ -144,7 +180,6 @@ export function useChat(selectedUserId?: string) {
             if (selectedUserId && (newMsg.sender_id === selectedUserId || newMsg.receiver_id === selectedUserId)) {
               setMessages(prev => [...prev, newMsg]);
             }
-            // Play sound for incoming messages
             if (newMsg.receiver_id === user.id && newMsg.sender_id !== user.id) {
               playMessageSound();
             }
@@ -240,7 +275,7 @@ export function useChat(selectedUserId?: string) {
     if (!user || message.sender_id !== user.id) return false;
     const createdAt = new Date(message.created_at).getTime();
     const now = Date.now();
-    return (now - createdAt) <= 40000; // 40 seconds
+    return (now - createdAt) <= 40000;
   }, [user]);
 
   return {
@@ -253,6 +288,8 @@ export function useChat(selectedUserId?: string) {
     fetchMessages,
     markAsRead,
     canEditMessage,
-    refetch: fetchConversations
+    refetch: fetchConversations,
+    isPartnerTyping,
+    sendTypingIndicator,
   };
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { User, Globe, Moon, Sun, Loader2, CreditCard, ChevronRight, Share2 } from 'lucide-react';
+import { User, Globe, Moon, Sun, Loader2, CreditCard, ChevronRight, Share2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { SocialImportSettings } from '@/components/settings/SocialImportSettings';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 
 const languages = [
   { code: 'en', name: 'English' },
@@ -37,6 +38,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { subscription } = useSubscription();
+  const { preferences: notifPrefs, updatePreference: updateNotifPref, loading: notifLoading } = useNotificationPreferences();
 
   const [fullName, setFullName] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState(i18n.language);
@@ -220,6 +222,47 @@ export default function SettingsPage() {
           transition={{ delay: 0.25 }}
         >
           <SocialImportSettings />
+        </motion.div>
+
+        {/* Notification Preferences */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.27 }}
+        >
+          <Card className="border-border shadow-soft">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-primary" />
+                Notification Preferences
+              </CardTitle>
+              <CardDescription>
+                Choose which notifications you want to receive
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[
+                { key: 'likes' as const, label: 'Likes', desc: 'When someone likes your memory or post' },
+                { key: 'comments' as const, label: 'Comments', desc: 'When someone comments on your content' },
+                { key: 'mentions' as const, label: 'Mentions', desc: 'When someone @mentions you' },
+                { key: 'friend_requests' as const, label: 'Friend Requests', desc: 'When someone sends you a friend request' },
+                { key: 'messages' as const, label: 'Messages', desc: 'When you receive a new chat message' },
+                { key: 'trending' as const, label: 'Trending', desc: 'Activity on your Trending posts' },
+              ].map(item => (
+                <div key={item.key} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+                  </div>
+                  <Switch
+                    checked={notifPrefs[item.key]}
+                    onCheckedChange={(val) => updateNotifPref(item.key, val)}
+                    disabled={notifLoading}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Theme Settings */}
