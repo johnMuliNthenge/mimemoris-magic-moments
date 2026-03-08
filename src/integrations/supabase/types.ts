@@ -1228,6 +1228,18 @@ export type Database = {
         }
         Returns: string
       }
+      find_collaboration_by_otp: {
+        Args: { _otp_code: string }
+        Returns: {
+          created_at: string
+          host_user_id: string
+          id: string
+          is_active: boolean
+          otp_expires_at: string
+          session_date: string
+          title: string
+        }[]
+      }
       get_active_social_platforms: {
         Args: never
         Returns: {
