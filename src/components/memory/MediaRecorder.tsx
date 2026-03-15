@@ -23,7 +23,7 @@ export function MediaRecorder({ type, onRecordingComplete, onCancel }: MediaReco
   const mediaRecorderRef = useRef<globalThis.MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
 
   const startRecording = useCallback(async () => {
