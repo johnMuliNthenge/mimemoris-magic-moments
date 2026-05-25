@@ -102,10 +102,15 @@ export function SocialImportSettings() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const getTelegramLinkUrl = () => {
+  const getTelegramLinkUrl = async (): Promise<string> => {
     const telegramPlatform = platforms.find(p => p.platform === 'telegram');
     const botUsername = telegramPlatform?.contact_identifier?.replace('@', '') || '';
-    return `https://t.me/${botUsername}?start=${user?.id}`;
+    const { data: token, error } = await supabase.rpc('create_social_link_token', { _platform: 'telegram' });
+    if (error || !token) {
+      toast({ title: 'Could not generate link', description: error?.message || 'Please try again.', variant: 'destructive' });
+      return '';
+    }
+    return `https://t.me/${botUsername}?start=${token}`;
   };
 
   if (loading) {
@@ -209,7 +214,10 @@ export function SocialImportSettings() {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => window.open(getTelegramLinkUrl(), '_blank')}
+                          onClick={async () => {
+                            const url = await getTelegramLinkUrl();
+                            if (url) window.open(url, '_blank');
+                          }}
                           className="gap-2"
                         >
                           <Link className="w-3 h-3" />

@@ -101,15 +101,13 @@ serve(async (req) => {
       const linkCode = text.replace("/start ", "").trim();
 
       if (linkCode && linkCode !== "/start") {
-        const { data: profile } = await supabaseClient
-          .from("profiles")
-          .select("user_id")
-          .eq("user_id", linkCode)
-          .maybeSingle();
+        // Redeem the one-time short-lived link token (server-side validated).
+        const { data: redeemedUserId, error: redeemErr } = await supabaseClient
+          .rpc("redeem_social_link_token", { _token: linkCode, _platform: "telegram" });
 
-        if (profile) {
+        if (!redeemErr && redeemedUserId) {
           const telegramMappings = telegramConfig?.config?.user_mappings || {};
-          telegramMappings[String(chatId)] = profile.user_id;
+          telegramMappings[String(chatId)] = redeemedUserId;
 
           await supabaseClient
             .from("social_import_config")
@@ -119,9 +117,9 @@ serve(async (req) => {
             .eq("platform", "telegram");
 
           await sendReply(chatId, "✅ Account linked successfully!\n\nYou can now send me:\n• 📝 Text messages\n• 📷 Photos\n• 🎥 Videos\n• 🎤 Voice notes\n\nEach one will be saved as a memory in Mimemoris!");
-          logStep("Account linked", { chatId, userId: profile.user_id });
+          logStep("Account linked", { chatId, userId: redeemedUserId });
         } else {
-          await sendReply(chatId, "❌ Invalid link code. Please use the link from your Mimemoris Settings page.");
+          await sendReply(chatId, "❌ Invalid or expired link code. Please go to Mimemoris Settings → Social Import and generate a fresh link.");
         }
         return new Response(JSON.stringify({ status: "ok" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200,
