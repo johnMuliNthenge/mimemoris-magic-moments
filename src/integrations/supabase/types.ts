@@ -983,6 +983,7 @@ export type Database = {
           full_name: string | null
           gender: string | null
           id: string
+          is_discoverable: boolean
           preferred_language: string | null
           updated_at: string
           user_id: string
@@ -995,6 +996,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           id?: string
+          is_discoverable?: boolean
           preferred_language?: string | null
           updated_at?: string
           user_id: string
@@ -1007,6 +1009,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           id?: string
+          is_discoverable?: boolean
           preferred_language?: string | null
           updated_at?: string
           user_id?: string
@@ -1125,6 +1128,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      social_link_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          platform: string
+          token: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          platform: string
+          token: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          platform?: string
+          token?: string
+          used?: boolean
+          user_id?: string
+        }
+        Relationships: []
       }
       subscription_plans: {
         Row: {
@@ -1372,6 +1402,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_social_link_token: { Args: { _platform: string }; Returns: string }
       create_system_notification: {
         Args: {
           _content: string
@@ -1481,6 +1512,10 @@ export type Database = {
           _plan_id: string
         }
         Returns: Json
+      }
+      redeem_social_link_token: {
+        Args: { _platform: string; _token: string }
+        Returns: string
       }
       reset_daily_memory_count: {
         Args: { _subscription_id: string }
