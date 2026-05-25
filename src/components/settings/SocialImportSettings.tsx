@@ -214,7 +214,10 @@ export function SocialImportSettings() {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => window.open(getTelegramLinkUrl(), '_blank')}
+                          onClick={async () => {
+                            const url = await getTelegramLinkUrl();
+                            if (url) window.open(url, '_blank');
+                          }}
                           className="gap-2"
                         >
                           <Link className="w-3 h-3" />
